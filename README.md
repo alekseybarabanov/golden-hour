@@ -9,6 +9,7 @@
 | [task-triage](skills/task-triage/) | Триаж задач: вес, декомпозиция, автокатегории, автовыполнение | proposal v2 |
 | [goal-checkin-notifier](skills/goal-checkin-notifier/) | Telegram-напоминания и чек-ины по целям: утренний бриф, пинги задач, вечерний обзор | applied |
 | [current-tasks](skills/current-tasks/) | Живой список активных задач | applied |
+| [task-tracker](skills/task-tracker/) | Трекер задач: прогресс, КТ, напоминания, итоги. Вывод в чат + Obsidian-дашборд | applied |
 | [note-to-file](skills/note-to-file/) | Сохранение заметок в inbox + notes.jsonl | proposal |
 | [show-ideas](skills/show-ideas/) | Дайджест идей за период | proposal |
 | [idea-tools](skills/idea-tools/) | Поиск, теги, статистика по идеям | proposal |
