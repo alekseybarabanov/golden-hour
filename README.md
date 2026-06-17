@@ -25,6 +25,7 @@
 |-------|----------|--------|
 | [task-triage](skills/task-triage/) | Триаж задач: вес, декомпозиция, автокатегории, автовыполнение | proposal v2 |
 | [goal-checkin-notifier](skills/goal-checkin-notifier/) | Telegram-напоминания и чек-ины по целям: утренний бриф, пинги задач, вечерний обзор | applied |
+| [focus-timer](skills/focus-timer/) | Таймер фокус-сессий: выбор длительности, похвала по завершении, статистика за 5 периодов | applied |
 | [current-tasks](skills/current-tasks/) | Живой список активных задач | applied |
 | [task-tracker](skills/task-tracker/) | Трекер задач: прогресс, КТ, напоминания, итоги. Вывод в чат + Obsidian-дашборд | applied |
 | [note-to-file](skills/note-to-file/) | Сохранение заметок в inbox + notes.jsonl | proposal |
@@ -40,7 +41,7 @@ hello-intro → purpose-select → [ветка]
   └─ topic    → topic-clarify → topic-self-assess
 ```
 
-После онбординга: `daily-plan` → `goal-checkin-notifier`.
+После онбординга: `daily-plan` → `goal-checkin-notifier` → `focus-timer`.
 
 ## Структура
 
