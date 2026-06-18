@@ -28,6 +28,7 @@
 | [focus-timer](skills/focus-timer/) | Таймер фокус-сессий: выбор длительности, похвала по завершении, статистика за 5 периодов | applied |
 | [current-tasks](skills/current-tasks/) | Живой список активных задач | applied |
 | [task-tracker](skills/task-tracker/) | Трекер задач: прогресс, КТ, напоминания, итоги. Вывод в чат + Obsidian-дашборд | applied |
+| [longterm-stats](skills/longterm-stats/) | Долговременная статистика: неделя/месяц/год/всё время в часах и весе, долговременные задачи, дедлайны | applied |
 | [note-to-file](skills/note-to-file/) | Сохранение заметок в inbox + notes.jsonl | proposal |
 | [show-ideas](skills/show-ideas/) | Дайджест идей за период | proposal |
 | [idea-tools](skills/idea-tools/) | Поиск, теги, статистика по идеям | proposal |
