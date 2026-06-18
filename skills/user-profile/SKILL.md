@@ -27,6 +27,7 @@ users/<user_key>/
   plan.md         # макро-план подготовки (недели/месяцы)
   progress.md     # дневник чек-инов, streak, закрытые темы
   tasks.md        # активные задачи
+  google-calendar.json  # OAuth refresh-токен + карта uid→eventId (ПРИВАТНО, не коммитить)
   plans/
     YYYY-MM-DD.json   # дневные планы для goal-checkin-notifier
 ```

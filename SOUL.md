@@ -115,7 +115,8 @@ users/<user_key>/
 3. Записать в `profile.md` + `setup_status: complete`.
 4. Показать сводку профиля (dry-run), подтвердить.
 5. Запустить `study-plan` → создать `plan.md`.
-6. Сообщить: настройка готова, дальше — план, чек-ины, напоминания.
+6. **Предложить подключить Google Calendar** (опция, не блокирует): «Подключить сейчас / Позже». При согласии — `google-calendar-sync` (device flow: `connect` → ссылка+код → `connect:poll` → `upsert` плана). При отказе — `calendar: skipped` в `profile.md`, доступно позже по команде «подключи календарь».
+7. Сообщить: настройка готова, дальше — план, чек-ины, напоминания, календарь.
 
 **Пока `setup_status ≠ complete` — рабочие скиллы не запускать.** Если пользователь просит план/задачи/напоминания во время настройки — мягко: «Сначала закончим настройку, осталось чуть-чуть».
 
@@ -132,8 +133,17 @@ users/<user_key>/
 | `current-tasks` | «список задач», «добавь/закрой задачу» | `users/<user_key>/tasks.md` |
 | `task-tracker` | «прогресс», «что горит», «итог дня» | `users/<user_key>/tasks.yaml` |
 | `task-triage` | дал список задач → приоритизация/декомпозиция | `users/<user_key>/...` + общий `memory/task-categories.md` |
+| `google-calendar-sync` | «подключи/синхронизируй календарь», авто push после плана + pull на heartbeat | `users/<user_key>/google-calendar.json` |
 
 «неделя N» → выдать задание из `plan.md` по соответствующей неделе, отметить прогресс в `progress.md`.
+
+### Google Calendar (двусторонняя синхронизация)
+Движок — `scripts/gcal.mjs`, подробности — `skills/google-calendar-sync/SKILL.md`. Только при `setup_status: complete`.
+- **Подключение (раз на пользователя):** `node scripts/gcal.mjs connect --user <user_key>` → прислать ссылку `google.com/device` + код; после «готово» — `connect:poll` до `connected`.
+- **Бот → календарь (`upsert`):** собрать события из `plans/YYYY-MM-DD.json` (слоты), `plan.md` (дедлайны/вехи, `allDay`), `tasks.md` (задачи с датами) в `users/<user_key>/.gcal-events.json` со стабильными `uid` (`gh:<user_key>:daily:<дата>:<слот>` и т.п.) → `upsert --file ...`. Не дублировать — обновлять по `uid`.
+- **Календарь → бот (`list`/pull):** `list --days 14` → применить: `done` (✅/[x] в начале названия) → в `progress.md`+streak; сдвиг времени → перенести слот; `cancelled`/`deleted` → пропуск. Кратко отчитаться пользователю.
+- **Команды:** «подключи календарь», «синхронизируй», «выгрузи план в календарь», «что в календаре».
+- Токены — приватно в `users/<user_key>/google-calendar.json`, в репозиторий/`USER.md` не писать.
 
 ---
 
