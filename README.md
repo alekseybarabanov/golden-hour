@@ -29,7 +29,7 @@
 | [current-tasks](skills/current-tasks/) | Живой список активных задач | applied |
 | [task-tracker](skills/task-tracker/) | Трекер задач: прогресс, КТ, напоминания, итоги. Вывод в чат + Obsidian-дашборд | applied |
 | [longterm-stats](skills/longterm-stats/) | Долговременная статистика: неделя/месяц/год/всё время в часах и весе, долговременные задачи, дедлайны | applied |
-| [goal-materials](skills/goal-materials/) | Материалы по целям: задачи, теория, ссылки; add/pick/status; memory/inbox + Telegram-кнопки | applied |
+| [goal-materials](skills/goal-materials/) | Материалы по целям: задачи, теория, ссылки; add/pick/status; memory/inbox + Telegram-кнопки (README, MIT) | applied |
 | [note-to-file](skills/note-to-file/) | Сохранение заметок в inbox + notes.jsonl | proposal |
 | [show-ideas](skills/show-ideas/) | Дайджест идей за период | proposal |
 | [idea-tools](skills/idea-tools/) | Поиск, теги, статистика по идеям | proposal |

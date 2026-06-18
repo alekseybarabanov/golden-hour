@@ -32,27 +32,15 @@
     "findings": []
   },
   "supportFiles": [
-    {
-      "path": "references/storage-schema.md"
-    },
-    {
-      "path": "references/status-flow.md"
-    },
-    {
-      "path": "references/tg-buttons.md"
-    },
-    {
-      "path": "references/memory-integration.md"
-    },
-    {
-      "path": "examples/add.md"
-    },
-    {
-      "path": "examples/pick.md"
-    },
-    {
-      "path": "examples/status.md"
-    }
+    { "path": "references/storage-schema.md" },
+    { "path": "references/status-flow.md" },
+    { "path": "references/tg-buttons.md" },
+    { "path": "references/memory-integration.md" },
+    { "path": "examples/add.md" },
+    { "path": "examples/pick.md" },
+    { "path": "examples/status.md" },
+    { "path": "README.md" },
+    { "path": "LICENSE" }
   ],
   "goal": "Библиотека материалов по целям из USER.md с add/pick/search/status, интеграцией в memory/inbox и Telegram inline-кнопками.",
   "evidence": "Запрос пользователя: материалы по предметам с автоподбором, записью в память и кнопками в Telegram.",
