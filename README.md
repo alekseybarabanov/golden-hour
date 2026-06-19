@@ -38,7 +38,7 @@
 
 | Скилл | Описание | Статус |
 |-------|----------|--------|
-| [coder](skills/coder/) | Код по запросу пользователя — саб-агенту code-writer. Эта сессия не пишет код сама, даже для простых задач. Архитектурно main лишён `write`/`edit`/`apply_patch`/`exec`/`process` (README, references/architecture, MIT) | applied |
+| [coder](skills/coder/) | Код по запросу пользователя — саб-агенту code-writer. Эта сессия не пишет код сама, даже для простых задач. (README, references/architecture, MIT) | applied |
 
 ## Цепочка онбординга
 
