@@ -1,3 +1,73 @@
-# Не публиковать на GitHub — названия/содержание ещё не финальные
+# Приватные данные пользователей и владельца — НЕ публиковать
+users/*
+!users/_example/
+!users/_example/**
+
+memory/*
+!memory/*.example.md
+!memory/task-categories.example.md
+!memory/user-priorities.example.md
+
+projects/
+USER.md
+MEMORY.md
+plans/
+state/
+*.bak-test
+
+# Секреты и локальная конфигурация
+secrets.json
+openclaw.json
+openclaw.json.new
+.openclaw/
+.env
+.env.*
+!.env.example
+credentials/
+*.pem
+*.key
+
+# Черновые/нефинальные дампы (legacy main)
 evening-task-triage-*/
 work-on-site-*/
+sayu-qa-site-*/
+current-tasks-*/
+goal-planned-*/
+task-tracker-*/
+google-task-hub-20260618-*/
+material-cache-20260618-*/
+reflection-loop-20260618-*/
+spaced-repetition-20260618-*/
+temporal-kg-20260618-*/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temp / backups
+*.tmp
+*.bak
+*~
+
+# Logs
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+.venv/
+venv/
+
+# Node
+node_modules/

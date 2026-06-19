@@ -1,72 +1,101 @@
-# Golden Hour — OpenClaw Skills
+# Golden Hour — ИИ-агент для подготовки и тайм-менеджмента
 
-ИИ-агент для подготовки к олимпиадам/экзаменам и тайм-менеджмента. Этот репозиторий содержит **Agent Skills** (формат OpenClaw / Cursor) для проекта [Golden Hour](https://github.com/margoshkagt-star/Golden-Hour).
+ИИ-агент для подготовки к **олимпиадам / экзаменам / темам**: знакомится, **запоминает каждого пользователя в отдельной папке**, строит план, ведёт прогресс, напоминает в Telegram.
 
-## Скиллы — онбординг и подготовка
+> **Установка:** ветка [`agent-install`](https://github.com/margoshkagt-star/Golden-Hour/tree/agent-install) → **[SETUP.md](SETUP.md)**
+
+## Что внутри
+
+| Компонент | Назначение |
+|---|---|
+| `SOUL.md` | Главная логика агента — грузится в каждой сессии |
+| `skills/` | Дизайн-документы скиллов (онбординг, план, задачи, напоминания) |
+| `scripts/` | Детерминированные скрипты планирования (Node ≥18, без npm) |
+| `openclaw.agent.example.json` | Фрагмент конфига OpenClaw для Telegram-бота |
+| `users/_example/` | Шаблон структуры данных пользователя |
+
+## Две фазы работы
+
+1. **Настройка** — только вопросы: имя, цель, предмет, уровень, дедлайн.
+2. **Рабочий режим** — план, дневные слоты, чек-ины, фокус-таймер, статистика, календарь.
+
+Рабочие скиллы включаются только после `setup_status: complete` в `users/<user_key>/profile.md`.
+
+## Цепочка
+
+```
+session-start
+  ├─ вернувшийся → продолжить / настроить заново
+  └─ новый → hello-intro → purpose-select → [ветка] → setup-finalize → study-plan
+                 ├─ olympiad → grade → subject → self-asses
+                 ├─ exam     → type → subject → topics → self-assess
+                 └─ topic    → clarify → self-assess
+
+рабочий режим: daily-plan → goal-checkin-notifier → focus-timer → daily-study-checkin
+```
+
+## Скиллы
+
+### Онбординг (`skills/_onboarding/`)
+
+| Скилл | Описание |
+|---|---|
+| `hello-intro` | Приветствие + имя (дословно) |
+| `purpose-select` | Цель: экзамен / олимпиада / тема |
+| `olympiad-grade` / `olympiad-subject` / `olympiad-self-asses` | Олимпиадная ветка |
+| `exam-type` / `exam-subject` / `exam-topics` / `exam-self-assess` | Экзаменационная ветка |
+| `topic-clarify` / `topic-self-assess` | Ветка «тема» |
+| `setup-finalize` | Дедлайн, часы, приоритеты → `setup_status: complete` |
+
+### Рабочий режим
 
 | Скилл | Описание | Статус |
-|-------|----------|--------|
-| [hello-intro](skills/hello-intro/) | Первое знакомство: приветствие + имя (запоминает дословно) | applied |
-| [purpose-select](skills/purpose-select/) | Выбор цели: экзамен / олимпиада / тема | applied |
-| [olympiad-grade](skills/olympiad-grade/) | Класс для олимпиадной подготовки (7–11 / выпускник) | applied |
-| [olympiad-subject](skills/olympiad-subject/) | Предмет олимпиады | applied |
-| [olympiad-self-asses](skills/olympiad-self-asses/) | Самооценка знаний по предмету (адаптивные опции) | applied |
-| [exam-type](skills/exam-type/) | Тип экзамена: ЕГЭ / ОГЭ / вступительные / другой | applied |
-| [exam-subject](skills/exam-subject/) | Предмет экзамена | applied |
-| [exam-topics](skills/exam-topics/) | Темы экзамена (кодификатор или список пользователя) | applied |
-| [exam-self-assess](skills/exam-self-assess/) | Уровень по каждой теме экзамена | applied |
-| [topic-clarify](skills/topic-clarify/) | Уточнение произвольной темы для изучения | applied |
-| [topic-self-assess](skills/topic-self-assess/) | Самооценка по конкретной теме | applied |
-| [daily-plan](skills/daily-plan/) | Генерация `plans/YYYY-MM-DD.json` из профиля пользователя | applied |
+|---|---|---|
+| `study-plan` | Макро-план (недели/месяцы) | applied |
+| `daily-plan` | Дневной план `plans/YYYY-MM-DD.json` | applied |
+| `goal-checkin-notifier` | Telegram: бриф, пинги, вечерний чек-ин | applied |
+| `focus-timer` | Фокус-сессии и статистика | applied |
+| `current-tasks` | Живой список задач | applied |
+| `task-tracker` | Прогресс, дедлайны, итоги | applied |
+| `task-triage` | Приоритизация и декомпозиция | applied |
+| `spaced-repetition` | Повтор слабых тем | applied |
+| `longterm-stats` | Статистика за период | applied |
+| `goal-materials` | Материалы по цели | applied |
+| `google-calendar-sync` | Синхронизация с Google Calendar | applied |
+| `reflection-loop` | Рефлексия при срывах | applied |
+| `material-cache` | Кэш материалов по темам | applied |
+| `temporal-kg` | Временной граф знаний | proposal |
+| `help-menu` | Меню возможностей | applied |
+| `note-to-file` | Заметки в inbox | proposal |
+| `show-ideas` / `idea-tools` | Дайджест идей | proposal |
 
-## Скиллы — задачи и напоминания
-
-| Скилл | Описание | Статус |
-|-------|----------|--------|
-| [task-triage](skills/task-triage/) | Триаж задач: вес, декомпозиция, автокатегории, автовыполнение | proposal v2 |
-| [goal-checkin-notifier](skills/goal-checkin-notifier/) | Telegram-напоминания и чек-ины по целям: утренний бриф, пинги задач, вечерний обзор | applied |
-| [focus-timer](skills/focus-timer/) | Таймер фокус-сессий: выбор длительности, похвала по завершении, статистика за 5 периодов | applied |
-| [current-tasks](skills/current-tasks/) | Живой список активных задач | applied |
-| [task-tracker](skills/task-tracker/) | Трекер задач: прогресс, КТ, напоминания, итоги. Вывод в чат + Obsidian-дашборд | applied |
-| [longterm-stats](skills/longterm-stats/) | Долговременная статистика: неделя/месяц/год/всё время в часах и весе, долговременные задачи, дедлайны | applied |
-| [goal-materials](skills/goal-materials/) | Материалы по целям: задачи, теория, ссылки; add/pick/status; memory/inbox + Telegram-кнопки (README, MIT) | applied |
-| [note-to-file](skills/note-to-file/) | Сохранение заметок в inbox + notes.jsonl | proposal |
-| [show-ideas](skills/show-ideas/) | Дайджест идей за период | proposal |
-| [idea-tools](skills/idea-tools/) | Поиск, теги, статистика по идеям | proposal |
-
-## Скиллы — инфраструктура
+### Инфраструктура
 
 | Скилл | Описание | Статус |
-|-------|----------|--------|
-| [coder](skills/coder/) | Код по запросу пользователя — саб-агенту code-writer. Эта сессия не пишет код сама, даже для простых задач. (README, references/architecture, MIT) | applied |
+|---|---|---|
+| `coder` | Код по запросу — делегируется саб-агенту `code-writer`; main-сессия не пишет код | applied |
 
-## Цепочка онбординга
+## Скрипты
 
-```
-hello-intro → purpose-select → [ветка]
-  ├─ olympiad → olympiad-grade → olympiad-subject → olympiad-self-asses
-  ├─ exam     → exam-type → exam-subject → exam-topics → exam-self-assess
-  └─ topic    → topic-clarify → topic-self-assess
-```
+Планирование — **только через скрипты**, не «в голове» у LLM:
 
-После онбординга: `daily-plan` → `goal-checkin-notifier` → `focus-timer`.
-
-## Структура
-
-```
-skills/
-  <skill-name>/
-    SKILL.md          # основной файл скилла
-    proposal.json     # метаданные Skill Workshop (опционально)
-    assets/           # шаблоны (опционально)
-    examples/         # примеры (опционально)
-    tests/            # тестовые фикстуры (опционально)
+```powershell
+node scripts/session-start.mjs --user tg-123456
+node scripts/study-plan.mjs --user tg-123456 --dry-run
+node scripts/daily-plan.mjs --user tg-123456 --dry-run
+node scripts/run-tests.mjs
 ```
 
-## Установка в OpenClaw
+Полный список: [scripts/README.md](scripts/README.md).
 
-Скопируйте нужную папку в `~/.openclaw/workspaces/golden-hour/skills/<skill-name>/` и перезапустите gateway, либо примените proposal через Skill Workshop.
+## Ветки репозитория
+
+| Ветка | Содержимое |
+|---|---|
+| `main` | Только скиллы (legacy) |
+| `unified-agent-v2` | Ранний дистрибутив агента |
+| **`agent-install`** | **Полная установка** — рекомендуется |
 
 ## Лицензия
 
-См. репозиторий. Скиллы в статусе `proposal` ещё не финальные.
+См. `skills/goal-materials/LICENSE` (MIT для goal-materials). Остальные скиллы в статусе `proposal` могут меняться.

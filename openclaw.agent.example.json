@@ -1,0 +1,73 @@
+{
+  "agents": {
+    "list": [
+      {
+        "id": "golden-hour",
+        "name": "golden-hour",
+        "workspace": "~/.openclaw/workspaces/golden-hour",
+        "model": "your-provider/your-model",
+        "identity": {
+          "name": "Золотой час",
+          "emoji": "🌅",
+          "avatar": "avatars/golden-hour/variant-1.png"
+        }
+      }
+    ]
+  },
+  "session": {
+    "dmScope": "per-channel-peer"
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "accounts": {
+        "golden-hour": {
+          "name": "Золотой час",
+          "enabled": true,
+          "dmPolicy": "open",
+          "allowFrom": ["*"],
+          "capabilities": {
+            "inlineButtons": "all"
+          },
+          "botToken": {
+            "source": "env",
+            "id": "TELEGRAM_BOT_TOKEN"
+          },
+          "commands": {
+            "native": false,
+            "nativeSkills": false
+          },
+          "customCommands": [
+            { "command": "plan", "description": "Собрать или пересобрать макро-план подготовки" },
+            { "command": "today", "description": "План на сегодня" },
+            { "command": "tasks", "description": "Активные задачи" },
+            { "command": "progress", "description": "Прогресс, что горит, итог дня" },
+            { "command": "triage", "description": "Разобрать список задач по приоритетам" },
+            { "command": "break", "description": "Разбить крупную задачу на шаги" },
+            { "command": "recur", "description": "Повторяющиеся дела" },
+            { "command": "timer", "description": "Фокус-сессия: старт, стоп" },
+            { "command": "checkin", "description": "Чек-ин дня" },
+            { "command": "reflect", "description": "Рефлексия при срыве" },
+            { "command": "repeat", "description": "Повтор слабых тем (spaced repetition)" },
+            { "command": "stats", "description": "Статистика за период" },
+            { "command": "calendar", "description": "Google Calendar: подключение и синхронизация" },
+            { "command": "materials", "description": "Материалы по цели" },
+            { "command": "notes", "description": "Конспект аудио-урока" },
+            { "command": "profile", "description": "Просмотр и правка профиля" },
+            { "command": "help", "description": "Что умеет бот" }
+          ]
+        }
+      }
+    }
+  },
+  "bindings": [
+    {
+      "type": "route",
+      "agentId": "golden-hour",
+      "match": {
+        "channel": "telegram",
+        "accountId": "golden-hour"
+      }
+    }
+  ]
+}

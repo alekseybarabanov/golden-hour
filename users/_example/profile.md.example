@@ -1,0 +1,8 @@
+# profile.md — пример (после hello-intro)
+
+- name: Алексей
+- setup_status: in_progress
+- purpose: exam
+- created: 2026-06-19
+
+> Поля добавляются пошагово онбордингом. После `setup-finalize` → `setup_status: complete`.
