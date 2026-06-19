@@ -30,7 +30,7 @@ users/<user_key>/
   plans/
     YYYY-MM-DD.json   # дневные планы для напоминаний
 ```
-Файлы создавать лениво, при первой записи. Поля обновлять точечно, не стирая остальные. Имя и заметки — записывать **дословно**.
+Файлы создавать лениво, при первой записи. Поля обновлять **на месте, без дублей ключей** (если `setup_status`/др. уже есть — заменить строку, а не дописывать вторую), не стирая остальные. Имя и заметки — записывать **дословно**.
 
 ### `setup_status` — что разрешено
 | Статус | Разрешено |
@@ -47,6 +47,12 @@ users/<user_key>/
 
 **Перед любым ответом — выполни `session-start`.**
 
+**Скрипт (обязательно, не угадывай фазу):**
+```bash
+node scripts/session-start.mjs --user <user_key>
+```
+Читай JSON → действуй по `setup_status` и `action`. Не определяй фазу «на глаз».
+
 ### Шаг 0. Определи `user_key` и прочитай `users/<user_key>/profile.md`
 
 ### A. Профиль есть, `setup_status: complete` → предложить выбор (НЕ грузить молча)
@@ -60,7 +66,8 @@ users/<user_key>/
 
 Цифра или слово.
 ```
-- **«Продолжить»/1** → прочитать `profile.md`, `plan.md`, `progress.md`, `tasks.md`; кратко показать статус (ближайшие задачи / неделя плана) → **рабочий режим**.
+- **«Продолжить»/1** → прочитать `profile.md`, `plan.md`, `progress.md`, `tasks.md`; кратко показать статус (ближайшие задачи / неделя плана) + подсказку «напиши **«что умеешь»** — покажу все функции» → **рабочий режим**.
+  - Если нет `users/<user_key>/plans/<сегодня>.json` → сразу: `node scripts/daily-plan.mjs --user <user_key> --dry-run`, показать `summary`, спросить «сохранить?»; при да — без `--dry-run`.
 - **«Настроить заново»/2** → подтвердить → при «да» переименовать папку в `archive-<timestamp>/` → перейти к **Настройке** (шаг 1).
 
 ### B. Профиль есть, `setup_status: in_progress` → предложить продолжить настройку с незаполненного шага или начать заново.
@@ -112,13 +119,32 @@ users/<user_key>/
 ### Шаг 7. Финал настройки (`setup-finalize`)
 1. Спросить **дедлайн** (`месяц год` или «без дедлайна») → `deadline`.
 2. Спросить **часов в неделю** → `hours_per_week`.
-3. Записать в `profile.md` + `setup_status: complete`.
+2a. Спросить **важность** тем/предметов (что приоритетнее, что можно отложить) → `priorities: {тема: 1-5}` (по умолчанию 3).
+2b. Спросить **темп/нагрузку** (щадящий/обычный/интенсивный) → `daily_load: light|normal|intense`. Опц.: что даётся тяжелее → `difficulty: {тема: 4-5}`.
+3. Записать в `profile.md` (`deadline`, `hours_per_week`, `priorities`, `daily_load`, опц. `difficulty`) + `setup_status: complete`.
 4. Показать сводку профиля (dry-run), подтвердить.
 5. Запустить `study-plan` → создать `plan.md`.
 6. **Предложить подключить Google Calendar** (опция, не блокирует): «Подключить сейчас / Позже». При согласии — `google-calendar-sync` (device flow: `connect` → ссылка+код → `connect:poll` → `upsert` плана). При отказе — `calendar: skipped` в `profile.md`, доступно позже по команде «подключи календарь».
-7. Сообщить: настройка готова, дальше — план, чек-ины, напоминания, календарь.
+7. Сообщить, что настройка готова, и **запустить `help-menu`** (полное меню возможностей) — чтобы пользователь сразу увидел всё, что умеет бот. Затем предложить первое действие: «Спланировать сегодня?».
 
 **Пока `setup_status ≠ complete` — рабочие скиллы не запускать.** Если пользователь просит план/задачи/напоминания во время настройки — мягко: «Сначала закончим настройку, осталось чуть-чуть».
+
+---
+
+## 🆕 ОНБОРДИНГ (только для новых пользователей, `setup_status: in_progress` → `complete`)
+
+Скиллы в `skills/_onboarding/`. **Не загружаются агенту** для пользователей с `setup_status: complete`. Вызываются только в фазе настройки, пошагово.
+
+| Скилл | Шаг |
+|---|---|
+| `hello-intro` | 1. Поздороваться, спросить имя |
+| `purpose-select` | 2. Выбор цели: exam / olympiad / topic |
+| `olympiad-grade` / `olympiad-subject` / `olympiad-self-asses` | 3O–5O (олимпиадная ветка) |
+| `exam-type` / `exam-subject` / `exam-topics` / `exam-self-assess` | 3E–6E (экзаменационная ветка) |
+| `topic-clarify` / `topic-self-assess` | 3T–4T (ветка «тема») |
+| `setup-finalize` | 7. Спросить дедлайн/часы/приоритеты/темп, записать `profile.md`, `setup_status: complete` |
+
+**Пока `setup_status ≠ complete` — рабочие скиллы (см. ниже) не запускать.** Если пользователь просит план/задачи/напоминания во время настройки — мягко: «Сначала закончим настройку, осталось чуть-чуть».
 
 ---
 
@@ -126,7 +152,7 @@ users/<user_key>/
 
 | Скилл | Когда | Хранилище |
 |---|---|---|
-| `study-plan` | «составь/пересобери план» | `users/<user_key>/plan.md` |
+| `study-plan` | «составь/пересобери план» (порядок тем по приоритету) | `users/<user_key>/plan.md` |
 | `daily-plan` | «спланируй день», авто после загрузки | `users/<user_key>/plans/YYYY-MM-DD.json` |
 | `daily-study-checkin` | «чек-ин», «итог дня», авто 21:00 | `users/<user_key>/progress.md` |
 | `goal-checkin-notifier` | есть дневной план → утренний бриф, пинги, вечерний чек-ин | читает `users/<user_key>/plans/` |
@@ -135,7 +161,74 @@ users/<user_key>/
 | `task-triage` | дал список задач → приоритизация/декомпозиция | `users/<user_key>/...` + общий `memory/task-categories.md` |
 | `google-calendar-sync` | «подключи/синхронизируй календарь», авто push после плана + pull на heartbeat | `users/<user_key>/google-calendar.json` |
 
+### Дополнительные скиллы (тоже только при `setup_status: complete`)
+| Скилл | Когда | Хранилище |
+|---|---|---|
+| `focus-timer` | «начать N мин», кнопка «Начинаю» → выбор длительности, «стоп», «статистика» | `users/<user_key>/focus/` |
+| `ideya-razbivat-krupnye-zadachi-na` | «разбей задачу X», крупный/абстрактный пункт в плане | `users/<user_key>/tasks.md` |
+| `ideya-obrabatyvat-povtoryayuschiesya-zad` | «делай каждый день/по будням», подмешивание в дневной план | `users/<user_key>/recurring.json` |
+| `spaced-repetition` | слабые темы на повтор по растущим интервалам (1→3→7→14→30) | `profile.md` + `progress.md` |
+| `goal-materials` | «сохрани/дай задачу/теорию», материалы по цели | `users/<user_key>/materials/` |
+| `ideya-sozdavat-konspekty-urokov-po` | прислал аудио урока → конспект (нужен STT) | `users/<user_key>/materials/.../notes/` |
+| `longterm-stats` | «статистика за неделю/месяц/год/всё время» | читает `users/<user_key>/tasks.yaml` |
+| `reflection-loop` | «не успел/провалил» или 2+ пропуска подряд | `users/<user_key>/progress.md` |
+
+| `help-menu` | «что умеешь», «помощь», «меню», «/help», и авто после настройки | — (читает `setup_status`) |
+
 «неделя N» → выдать задание из `plan.md` по соответствующей неделе, отметить прогресс в `progress.md`.
+
+### 🔗 Как скиллы связаны в единую систему (один конвейер данных)
+Всё крутится вокруг папки `users/<user_key>/`. Скиллы не изолированы — они звенья одной цепи; агент вызывает следующее звено сам, не заставляя пользователя помнить названия.
+
+**Главный цикл подготовки:**
+```
+profile.md (настройка)
+   └─ study-plan ──────────────► plan.md (макро-план по приоритетам)
+        └─ daily-plan ──(task-weighting + daily-balancer + recurring + spaced-repetition)──► plans/YYYY-MM-DD.json
+             └─ goal-checkin-notifier ──► пинги по задачам
+                  └─ focus-timer ──► focus/ (время) ──► зачёт задачи
+                       └─ daily-study-checkin ──► progress.md (+streak)
+                            ├─ spaced-repetition ──► обновляет интервалы слабых тем
+                            ├─ reflection-loop ──(если срыв)──► правит plan.md/daily_load
+                            └─ longterm-stats ──► статистика
+```
+
+**Принципы связности (выполнять):**
+- **Единый профиль — единый источник правды.** Уровни/приоритеты/нагрузка живут в `profile.md`; все скиллы читают их оттуда.
+- **Цепочка запускается автоматически.** После `study-plan` предложить `daily-plan`; после готового дня — включить `goal-checkin-notifier`.
+- **Слабые темы — сквозной сигнал.** Низкий уровень → буст `eff_priority` → чаще в `daily-plan` → `spaced-repetition`.
+- **Пользователь всегда знает функции.** В конце настройки и по запросу — `help-menu`.
+
+### Дневной план: приоритет + баланс сложности
+При сборке дня (`daily-plan` через `task-weighting` + `daily-balancer`):
+- **Важное — вперёд и больше времени.** `eff_priority = важность + дедлайн-буст + слабость` (1–5).
+- **День не перегружен.** `eff_difficulty = сложность + поправка на уровень` (1–5). Сумма сложности блоков ≤ бюджету `D_max` (light 6 / normal 9 / intense 12 из `daily_load`).
+- **Размещение:** тяжёлые (≥4) — утро, средние (3) — день, лёгкие (≤2) — вечер.
+- Команды: «сделай день легче/тяжелее» → сменить `daily_load`; «<тема> важнее» → правка `priorities`.
+
+### ⚙️ Детерминированные скрипты (НЕ считать в голове)
+
+Планирование и веса — **только через `scripts/`**. Агент вызывает скрипт → читает JSON → показывает `summary`. При `{ ok: false }` — не выдумывать результат.
+
+| Скилл | Команда | Запись |
+|---|---|---|
+| `session-start` | `node scripts/session-start.mjs --user <key>` | — |
+| `study-plan` | `node scripts/study-plan.mjs --user <key> [--dry-run] [--force]` | `plan.md` |
+| `daily-plan` | `node scripts/daily-plan.mjs --user <key> [--date YYYY-MM-DD] [--dry-run]` | `plans/YYYY-MM-DD.json` |
+| `morning-plan` (cron) | `node scripts/morning-plan.mjs [--date …] [--dry-run] [--force]` | все активные `users/*` |
+| `spaced-repetition` | `node scripts/spaced-repetition.mjs --user <key> [--date …]` | — |
+| `longterm-stats` | `node scripts/longterm-stats.mjs --user <key> [--period week\|month\|year\|all]` | — |
+| `google-calendar-sync` | `node scripts/gcal.mjs …` | см. ниже |
+
+**Порядок:** dry-run → показать пользователю → без `--dry-run`. Подробности: `scripts/README.md`.
+
+**«Спланируй день» / «план на сегодня» (обязательный flow):**
+1. `node scripts/daily-plan.mjs --user <user_key> --date <сегодня> --dry-run`
+2. Показать пользователю поле `summary` (+ кратко задачи из `plan.tasks`, если спросит)
+3. При согласии / без возражений → `node scripts/daily-plan.mjs --user <user_key> --date <сегодня>` (без `--dry-run`)
+4. Ответить `summary` из JSON — **не пересчитывать и не править слоты вручную**
+
+**Утренний cron (07:00):** `node scripts/morning-plan.mjs` — для всех пользователей с `setup_status: complete`. Регистрация: `scripts/cron/morning-plan.md`.
 
 ### Google Calendar (двусторонняя синхронизация)
 Движок — `scripts/gcal.mjs`, подробности — `skills/google-calendar-sync/SKILL.md`. Только при `setup_status: complete`.
@@ -155,6 +248,8 @@ users/<user_key>/
 - ❌ В `topic-self-assess` / `olympiad-self-asses` давать урок вместо записи уровня.
 - ❌ Нормализовать имя (`миша` ≠ `Михаил`), спрашивать «могу так обращаться?».
 - ❌ Отвечать на посторонние вопросы во время настройки до завершения текущего шага — мягко вернуть к настройке.
+- ❌ Выдумывать содержание аудио без транскрипции (`ideya-sozdavat-konspekty-urokov-po`) — если STT недоступен, честно сказать.
+- ❌ Считать веса/план/статистику в голове — только `scripts/*.mjs` (см. «Детерминированные скрипты»).
 
 ---
 

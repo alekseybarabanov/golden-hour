@@ -1,166 +1,196 @@
 # SETUP — как запустить агента «Золотой час»
 
-Ветка `unified-agent-v2` — цельный ИИ-агент для подготовки к олимпиадам/экзаменам/темам: знакомится, **запоминает каждого пользователя в отдельной папке**, строит план, ведёт прогресс, напоминает.
+Ветка **`agent-install`** — полный дистрибутив для самостоятельной установки: воркспейс OpenClaw, скиллы, детерминированные скрипты, шаблоны данных.
 
-Две фазы: **(1) настройка** (только вопросы) → **(2) рабочий режим** (план, задачи, чек-ины, напоминания). Рабочие скиллы включаются только после завершения настройки.
+Агент знакомится с пользователем, **запоминает каждого в отдельной папке**, строит план подготовки, ведёт прогресс и напоминает в Telegram.
 
 ---
 
 ## 1. Предпосылки
 
-- Установлен **OpenClaw** (CLI + gateway). Проверка: `openclaw --version`.
-- Есть рабочее пространство агента, напр. `~/.openclaw/workspaces/golden-hour/`
-  (Windows: `C:\Users\<you>\.openclaw\workspaces\golden-hour\`).
-- Для напоминаний — подключённый Telegram-бот (см. шаг 4).
+| Требование | Проверка |
+|---|---|
+| **Node.js ≥ 18** | `node --version` |
+| **OpenClaw** (CLI + gateway) | `openclaw --version` |
+| **Git** | `git --version` |
+| **Telegram-бот** (опционально, для пингов) | токен от [@BotFather](https://t.me/BotFather) |
+| **LLM-провайдер** | API-ключ в конфиге OpenClaw |
 
 ---
 
-## 2. Установка скиллов
-
-Скопировать содержимое репозитория в воркспейс агента:
+## 2. Клонирование и установка воркспейса
 
 ```bash
-# из корня этого репозитория
-cp -r skills/*      ~/.openclaw/workspaces/golden-hour/skills/
-cp    SOUL.md       ~/.openclaw/workspaces/golden-hour/SOUL.md
-cp    AGENTS.md     ~/.openclaw/workspaces/golden-hour/AGENTS.md
+git clone -b agent-install https://github.com/margoshkagt-star/Golden-Hour.git golden-hour
 ```
 
-PowerShell (Windows):
+**Linux / macOS:**
+
+```bash
+mkdir -p ~/.openclaw/workspaces
+cp -r golden-hour ~/.openclaw/workspaces/golden-hour
+```
+
+**Windows (PowerShell):**
 
 ```powershell
 $ws = "$env:USERPROFILE\.openclaw\workspaces\golden-hour"
-Copy-Item .\skills\*  "$ws\skills\" -Recurse -Force
-Copy-Item .\SOUL.md   "$ws\SOUL.md" -Force
-Copy-Item .\AGENTS.md "$ws\AGENTS.md" -Force
+git clone -b agent-install https://github.com/margoshkagt-star/Golden-Hour.git $ws
 ```
 
-> **Важно:** `SOUL.md` — это **реальная логика исполнения** (агент грузит его в каждой сессии). Файлы `skills/<name>/SKILL.md` — подробные дизайн-документы. Без `SOUL.md` скиллы не «склеятся» в единый поток.
+> Можно клонировать сразу в целевую папку — главное, чтобы путь совпал с `workspace` в `openclaw.json`.
 
-Создать профиль владельца из шаблона (свои данные):
+---
+
+## 3. Профиль владельца и служебные файлы
+
+```powershell
+cd "$env:USERPROFILE\.openclaw\workspaces\golden-hour"
+
+Copy-Item USER.example.md USER.md
+Copy-Item MEMORY.example.md MEMORY.md
+Copy-Item memory\task-categories.example.md memory\task-categories.md
+Copy-Item memory\user-priorities.example.md memory\user-priorities.md
+```
+
+Отредактируйте `USER.md` — имя, часовой пояс, стиль общения.
+
+---
+
+## 4. Регистрация агента в OpenClaw
+
+Скопируйте фрагмент из `openclaw.agent.example.json` в ваш `~/.openclaw/openclaw.json`:
+
+- агент `golden-hour` с путём к воркспейсу;
+- Telegram-аккаунт `golden-hour` с `inlineButtons: "all"` (нужно для кнопок напоминаний);
+- `bindings` — роутинг сообщений бота на агента;
+- `session.dmScope: "per-channel-peer"` — отдельная сессия на каждого пользователя Telegram.
+
+**Токен бота** — в `secrets.json` (см. `secrets.example.json`) или через переменную окружения `TELEGRAM_BOT_TOKEN`.
+
+```powershell
+# пример secrets.json
+Copy-Item secrets.example.json "$env:USERPROFILE\.openclaw\secrets.json"
+# отредактировать токен и Google OAuth (если нужен календарь)
+```
+
+---
+
+## 5. Проверка скриптов
+
+```powershell
+cd "$env:USERPROFILE\.openclaw\workspaces\golden-hour"
+node scripts/run-tests.mjs
+node scripts/session-start.mjs --user local
+```
+
+Ожидаемо: тесты проходят; `session-start` возвращает JSON с `setup_status: "new"` для нового пользователя.
+
+---
+
+## 6. Перезапуск gateway
 
 ```bash
-cp USER.example.md  ~/.openclaw/workspaces/golden-hour/USER.md
-# отредактировать имя, Telegram, часовой пояс
-```
-
----
-
-## 3. Включить inline-кнопки (для напоминаний)
-
-В `~/.openclaw/openclaw.json` у агента `golden-hour` должно быть:
-
-```jsonc
-{
-  "agents": {
-    "golden-hour": {
-      "capabilities": { "inlineButtons": "all" }
-    }
-  }
-}
-```
-
-Это нужно скиллу `goal-checkin-notifier` (кнопки «Начинаю / Отложить / Пропустить»).
-
----
-
-## 4. Telegram (опционально, для пингов и чек-инов)
-
-- Подключить Telegram-канал агенту в `openclaw.json` (токен бота).
-- Агент сам определит пользователя по Telegram id (см. ниже «Как агент узнаёт пользователя»).
-
----
-
-## 5. Перезапуск
-
-```bash
-openclaw gateway restart      # или: openclaw gateway stop && openclaw gateway start
+openclaw gateway restart
 openclaw gateway status
 ```
 
 ---
 
-## 6. Проверка
+## 7. Первый запуск
 
-Запустить тестовую сессию:
+**Через CLI (без Telegram):**
 
 ```bash
-openclaw agent --agent golden-hour --session-key test-1 --message "привет"
+openclaw agent --agent golden-hour --session-key test-local --message "привет"
 ```
 
-Ожидаемо:
-1. **Новый пользователь** → приветствие + запрос имени → выбор цели → ветка (олимпиада/экзамен/тема) → дедлайн + часы → план.
-2. После настройки появляется папка `users/<user_key>/profile.md` с `setup_status: complete`.
-3. **Повторный заход** (новая сессия, тот же пользователь) → «С возвращением! 1. Продолжить 2. Настроить заново».
+**Через Telegram:** напишите боту «привет».
+
+### Ожидаемый сценарий
+
+1. **Новый пользователь** → приветствие → имя → цель → ветка (олимпиада/экзамен/тема) → дедлайн и часы → макро-план.
+2. Появляется `users/<user_key>/profile.md` с `setup_status: complete`.
+3. **Повторный заход** → «С возвращением! 1. Продолжить 2. Настроить заново».
+
+`user_key` для Telegram: `tg-<id>`. Для CLI/webchat: `local`.
 
 ---
 
-## Как это работает
+## 8. Утренний cron (опционально)
 
-### Фазы
-- **Настройка** (`session-start` → `hello-intro` → `purpose-select` → ветка → `setup-finalize`): только вопросы, профиль собирается по шагам.
-- **Рабочий режим** (после `setup_status: complete`): `study-plan`, `daily-plan`, `daily-study-checkin`, `goal-checkin-notifier`, `current-tasks`, `task-tracker`, `task-triage`.
+Автогенерация дневных планов в **07:00** Europe/Moscow:
 
-### Как агент узнаёт пользователя
-В начале каждой сессии определяется `user_key` по **отправителю канала** (не по имени в тексте):
-
-| Источник | `user_key` |
-|---|---|
-| Telegram | `tg-<id>` |
-| Другой канал | `<channel>-<id>` |
-| Webchat / CLI | `local` |
-
-Затем агент смотрит `users/<user_key>/profile.md`:
-- **нет файла** → новый → онбординг;
-- **есть, `setup_status: in_progress`** → «продолжить настройку / заново»;
-- **есть, `setup_status: complete`** → «продолжить (загрузить план) / настроить заново».
-
-Новизна определяется **наличием папки на диске**, а не памятью чата — поэтому после `/new` или перезапуска тот же Telegram-пользователь опознаётся и получает свой план.
-
-### Хранение данных (по пользователям)
+```powershell
+.\scripts\cron\register-morning-plan.ps1
+# или Windows Task Scheduler:
+.\scripts\cron\register-task-scheduler.ps1
 ```
-users/<user_key>/
-  profile.md    # цель, предмет/темы, уровни, дедлайн, часы, setup_status
-  plan.md       # макро-план (недели/месяцы)
-  progress.md   # дневник чек-инов, streak, закрытые темы
-  tasks.md      # активные задачи
-  tasks.yaml    # данные трекера (опц.)
-  plans/
-    YYYY-MM-DD.json   # дневные планы для напоминаний
+
+Подробности: `scripts/cron/morning-plan.md`.
+
+---
+
+## 9. Google Calendar (опционально)
+
+Пошаговая инструкция: **[GOOGLE-CALENDAR.md](GOOGLE-CALENDAR.md)**.
+
+Кратко: OAuth-ключи в `secrets.json` → пользователь пишет боту «подключи календарь».
+
+---
+
+## Структура репозитория
+
 ```
-Папка `users/` **приватна** — её НЕ коммитят в репозиторий (см. `.gitignore`).
+golden-hour/
+  SOUL.md              # главная логика агента (обязательно!)
+  AGENTS.md            # базовое поведение воркспейса
+  IDENTITY.md          # имя, emoji, аватар
+  TOOLS.md             # локальные заметки владельца
+  HEARTBEAT.md         # периодические задачи (опционально)
+  skills/              # дизайн-документы скиллов
+    _onboarding/       # скиллы фазы настройки
+  scripts/             # детерминированные скрипты (Node ≥18)
+  users/_example/      # шаблон структуры данных пользователя
+  memory/*.example.md  # шаблоны категорий и приоритетов
+  knowledge/           # общие учебные материалы (опционально)
+  openclaw.agent.example.json
+  secrets.example.json
+```
+
+**Не коммитятся** (см. `.gitignore`): `users/tg-*`, `USER.md`, `MEMORY.md`, `secrets.json`.
 
 ---
 
 ## Состав скиллов
 
-**Инфраструктура / память**
-- `user-profile` — слой хранения: папка на пользователя.
-- `session-start` — точка входа: новый/старый, загрузка-или-сброс.
-- `setup-finalize` — финал настройки (дедлайн, часы), `setup_status: complete`.
+**Инфраструктура:** `user-profile`, `session-start`, `help-menu`
 
-**Онбординг**
-- `hello-intro`, `purpose-select`
-- olympiad: `olympiad-grade` → `olympiad-subject` → `olympiad-self-asses`
-- exam: `exam-type` → `exam-subject` → `exam-topics` → `exam-self-assess`
-- topic: `topic-clarify` → `topic-self-assess`
+**Онбординг** (`skills/_onboarding/`): `hello-intro` → `purpose-select` → ветка → `setup-finalize`
 
-**Рабочий режим**
-- `study-plan` — макро-план в папку пользователя.
-- `daily-plan` — дневной план (JSON) для напоминаний.
-- `daily-study-checkin` — ежедневный чек-ин + streak.
-- `goal-checkin-notifier` — утренний бриф, пинги, вечерний чек-ин (Telegram).
-- `current-tasks` — живой список задач.
-- `task-tracker` — прогресс по весу, итоги.
-- `task-triage` — приоритизация, декомпозиция, автокатегории.
+**Рабочий режим:** `study-plan`, `daily-plan`, `daily-study-checkin`, `goal-checkin-notifier`, `current-tasks`, `task-tracker`, `task-triage`, `focus-timer`, `spaced-repetition`, `longterm-stats`, `goal-materials`, `google-calendar-sync`, `reflection-loop`
 
 ---
 
 ## Частые проблемы
 
-| Симптом | Причина / решение |
+| Симптом | Решение |
 |---|---|
-| Агент каждый раз спрашивает имя заново | Не скопирован `SOUL.md` (логика `session-start`). Скопировать и перезапустить gateway. |
-| Рабочие команды («план», «задачи») игнорируются | `setup_status ≠ complete` — закончить настройку. |
-| Нет напоминаний | Нет `users/<user_key>/plans/YYYY-MM-DD.json` или выключены `inlineButtons`. |
-| Данные пользователей смешиваются | Проверить, что `user_key` берётся из канала, а не из имени. |
+| Агент каждый раз спрашивает имя | Не скопирован/устарел `SOUL.md`. Перезапустить gateway. |
+| «План» игнорируется | `setup_status ≠ complete` — закончить онбординг. |
+| Нет inline-кнопок | В `openclaw.json`: `capabilities.inlineButtons: "all"`. |
+| Нет напоминаний | Нет `users/<key>/plans/YYYY-MM-DD.json` — запустить `daily-plan`. |
+| Ошибка скриптов | Node ≥ 18; путь к воркспейсу верный; `node scripts/run-tests.mjs`. |
+| Данные смешиваются | Проверить `session.dmScope: per-channel-peer` и `user_key` из канала. |
+
+---
+
+## Обновление
+
+```powershell
+cd "$env:USERPROFILE\.openclaw\workspaces\golden-hour"
+git pull origin agent-install
+openclaw gateway restart
+```
+
+Папка `users/` и локальные `USER.md`/`MEMORY.md` при `git pull` не затрагиваются.

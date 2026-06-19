@@ -1,6 +1,13 @@
 # Приватные данные пользователей и владельца — НЕ публиковать
-users/
-memory/
+users/*
+!users/_example/
+!users/_example/**
+
+memory/*
+!memory/*.example.md
+!memory/task-categories.example.md
+!memory/user-priorities.example.md
+
 projects/
 USER.md
 MEMORY.md
@@ -8,6 +15,20 @@ plans/
 state/
 *.bak-test
 
-# Черновые/нефинальные дампы
+# Секреты и локальная конфигурация
+secrets.json
+openclaw.json
+openclaw.json.new
+.openclaw/
+
+# Черновые/нефинальные дампы (legacy main)
 evening-task-triage-*/
 work-on-site-*/
+current-tasks-*/
+goal-planned-*/
+task-tracker-*/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp

@@ -1,74 +1,93 @@
-# Golden Hour — OpenClaw Skills (ветка `unified-agent-v2`)
+# Golden Hour — ИИ-агент для подготовки и тайм-менеджмента
 
-Цельный ИИ-агент для подготовки к **олимпиадам / экзаменам / темам** и тайм-менеджмента.
-Знакомится, **запоминает каждого пользователя в отдельной папке**, строит план, ведёт прогресс, напоминает.
+ИИ-агент для подготовки к **олимпиадам / экзаменам / темам**: знакомится, **запоминает каждого пользователя в отдельной папке**, строит план, ведёт прогресс, напоминает в Telegram.
 
-> 🚀 **Как запустить — см. [SETUP.md](SETUP.md).**
+> **Установка:** ветка [`agent-install`](https://github.com/margoshkagt-star/Golden-Hour/tree/agent-install) → **[SETUP.md](SETUP.md)**
 
-## Главное
+## Что внутри
 
-- **Две фазы:** настройка (только вопросы) → рабочий режим (план, задачи, чек-ины, напоминания). Рабочие скиллы включаются только после `setup_status: complete`.
-- **Память по пользователям:** каждый пользователь = папка `users/<user_key>/` (`tg-<id>` / `local`). Данные не смешиваются.
-- **Старт сессии:** агент сам понимает, новый это человек или вернувшийся (по наличию `users/<user_key>/profile.md`), и предлагает «продолжить / настроить заново».
-- **Реальная логика — в `SOUL.md`** (грузится в каждой сессии). `skills/<name>/SKILL.md` — дизайн-документы.
-
-## Скиллы
-
-**Инфраструктура / память**
-
-| Скилл | Описание |
+| Компонент | Назначение |
 |---|---|
-| `user-profile` | Слой хранения: папка `users/<user_key>/` (profile/plan/progress/tasks) |
-| `session-start` | Точка входа: новый/старый пользователь, загрузка-или-сброс |
-| `setup-finalize` | Финал настройки (дедлайн, часы/нед) → `setup_status: complete` |
+| `SOUL.md` | Главная логика агента — грузится в каждой сессии |
+| `skills/` | Дизайн-документы скиллов (онбординг, план, задачи, напоминания) |
+| `scripts/` | Детерминированные скрипты планирования (Node ≥18, без npm) |
+| `openclaw.agent.example.json` | Фрагмент конфига OpenClaw для Telegram-бота |
+| `users/_example/` | Шаблон структуры данных пользователя |
 
-**Онбординг**
+## Две фазы работы
 
-| Скилл | Описание |
-|---|---|
-| `hello-intro` | Приветствие + имя (дословно) |
-| `purpose-select` | Выбор цели: экзамен / олимпиада / тема |
-| `olympiad-grade` / `olympiad-subject` / `olympiad-self-asses` | Класс → предмет → уровень (адаптивно) |
-| `exam-type` / `exam-subject` / `exam-topics` / `exam-self-assess` | Тип → предмет → темы → уровень по темам |
-| `topic-clarify` / `topic-self-assess` | Уточнение темы → уровень по теме |
+1. **Настройка** — только вопросы: имя, цель, предмет, уровень, дедлайн.
+2. **Рабочий режим** — план, дневные слоты, чек-ины, фокус-таймер, статистика, календарь.
 
-**Рабочий режим**
-
-| Скилл | Описание |
-|---|---|
-| `study-plan` | Макро-план (недели/месяцы) в папку пользователя |
-| `daily-plan` | Дневной план `plans/YYYY-MM-DD.json` для напоминаний |
-| `daily-study-checkin` | Ежедневный чек-ин прогресса + streak |
-| `goal-checkin-notifier` | Telegram: утренний бриф, пинги задач, вечерний чек-ин |
-| `current-tasks` | Живой список активных задач |
-| `task-tracker` | Прогресс по весу, итоги, дашборд |
-| `task-triage` | Приоритизация, декомпозиция, автокатегории |
+Рабочие скиллы включаются только после `setup_status: complete` в `users/<user_key>/profile.md`.
 
 ## Цепочка
 
 ```
-session-start (новый/старый?)
-  ├─ старый  → «продолжить / настроить заново» → загрузка плана
-  └─ новый   → hello-intro → purpose-select → [ветка] → setup-finalize → study-plan
+session-start
+  ├─ вернувшийся → продолжить / настроить заново
+  └─ новый → hello-intro → purpose-select → [ветка] → setup-finalize → study-plan
                  ├─ olympiad → grade → subject → self-asses
                  ├─ exam     → type → subject → topics → self-assess
                  └─ topic    → clarify → self-assess
 
-рабочий режим: study-plan → daily-plan → goal-checkin-notifier / current-tasks / task-tracker
+рабочий режим: daily-plan → goal-checkin-notifier → focus-timer → daily-study-checkin
 ```
 
-## Структура
+## Скиллы
 
+### Онбординг (`skills/_onboarding/`)
+
+| Скилл | Описание |
+|---|---|
+| `hello-intro` | Приветствие + имя (дословно) |
+| `purpose-select` | Цель: экзамен / олимпиада / тема |
+| `olympiad-grade` / `olympiad-subject` / `olympiad-self-asses` | Олимпиадная ветка |
+| `exam-type` / `exam-subject` / `exam-topics` / `exam-self-assess` | Экзаменационная ветка |
+| `topic-clarify` / `topic-self-assess` | Ветка «тема» |
+| `setup-finalize` | Дедлайн, часы, приоритеты → `setup_status: complete` |
+
+### Рабочий режим
+
+| Скилл | Описание | Статус |
+|---|---|---|
+| `study-plan` | Макро-план (недели/месяцы) | applied |
+| `daily-plan` | Дневной план `plans/YYYY-MM-DD.json` | applied |
+| `goal-checkin-notifier` | Telegram: бриф, пинги, вечерний чек-ин | applied |
+| `focus-timer` | Фокус-сессии и статистика | applied |
+| `current-tasks` | Живой список задач | applied |
+| `task-tracker` | Прогресс, дедлайны, итоги | applied |
+| `task-triage` | Приоритизация и декомпозиция | applied |
+| `spaced-repetition` | Повтор слабых тем | applied |
+| `longterm-stats` | Статистика за период | applied |
+| `goal-materials` | Материалы по цели | applied |
+| `google-calendar-sync` | Синхронизация с Google Calendar | applied |
+| `reflection-loop` | Рефлексия при срывах | applied |
+| `help-menu` | Меню возможностей | applied |
+| `note-to-file` | Заметки в inbox | proposal |
+| `show-ideas` / `idea-tools` | Дайджест идей | proposal |
+
+## Скрипты
+
+Планирование — **только через скрипты**, не «в голове» у LLM:
+
+```powershell
+node scripts/session-start.mjs --user tg-123456
+node scripts/study-plan.mjs --user tg-123456 --dry-run
+node scripts/daily-plan.mjs --user tg-123456 --dry-run
+node scripts/run-tests.mjs
 ```
-skills/<skill-name>/SKILL.md   # дизайн-документ скилла
-SOUL.md                        # реальная логика исполнения (грузится агентом)
-AGENTS.md                      # базовое поведение воркспейса
-USER.example.md                # шаблон профиля владельца
-SETUP.md                       # инструкция по установке
-```
 
-Приватные данные (`users/`, `memory/`, `projects/`, `USER.md`) в репозиторий не коммитятся (см. `.gitignore`).
+Полный список: [scripts/README.md](scripts/README.md).
 
-## Установка
+## Ветки репозитория
 
-См. **[SETUP.md](SETUP.md)**.
+| Ветка | Содержимое |
+|---|---|
+| `main` | Только скиллы (legacy) |
+| `unified-agent-v2` | Ранний дистрибутив агента |
+| **`agent-install`** | **Полная установка** — рекомендуется |
+
+## Лицензия
+
+См. `skills/goal-materials/LICENSE` (MIT для goal-materials). Остальные скиллы в статусе `proposal` могут меняться.

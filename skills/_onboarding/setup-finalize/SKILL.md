@@ -30,7 +30,22 @@ description: "Завершает онбординг: спрашивает дед
    Например: 3, 5, 10. Можно диапазон.
    ```
    → `hours_per_week: <число>`.
-4. **Записать в `profile.md`:** `deadline`, `hours_per_week`, `setup_status: complete`, обновить `updated`.
+3a. **Спросить важность тем/предметов** (приоритет):
+   ```
+   ⭐ Что для тебя важнее всего? Отметь 1–2 самые приоритетные темы/предметы
+   (им дам больше времени), и если есть — что можно отложить.
+   ```
+   - Для exam/olympiad — перечислить темы/предметы, попросить отметить важные.
+   - Для topic — спросить, насколько тема приоритетна (1–5).
+   → `priorities: {<тема>: 1-5}` (по умолчанию 3, отмеченные — 4–5).
+3b. **Спросить переносимую нагрузку** (для баланса сложности дня):
+   ```
+   🔋 Какой темп комфортен?
+   1. Щадящий  2. Обычный  3. Интенсивный
+   ```
+   → `daily_load: light|normal|intense`.
+3c. *(опц.)* **Уточнить, что даётся тяжелее** — если пользователь сам называет «геометрия тяжёлая» → `difficulty: {<тема>: 4-5}`. Иначе сложность выведется из уровня (`task-weighting`).
+4. **Записать в `profile.md`:** `deadline`, `hours_per_week`, `priorities`, `daily_load`, (опц.) `difficulty`, `setup_status: complete`, обновить `updated`.
 5. **Показать сводку профиля** (dry-run) и подтвердить:
    ```
    ✅ Настройка готова, <name>!
@@ -39,6 +54,8 @@ description: "Завершает онбординг: спрашивает дед
    - Уровень: <level>
    - Дедлайн: <deadline>
    - Время: <hours_per_week> ч/нед
+   - Приоритет: <важные темы>
+   - Темп: <daily_load>
 
    Строю план подготовки → дальше включаются напоминания и чек-ины.
    ```
@@ -53,7 +70,8 @@ description: "Завершает онбординг: спрашивает дед
    ```
    - **«Подключить»/1** → передать в `google-calendar-sync` (device flow: `connect` → ссылка+код → `connect:poll`). После `connected` — сразу выгрузить план/слоты (`upsert`).
    - **«Позже»/2** → пометить `calendar: skipped` в `profile.md`, не приставать; напомнить, что доступно по команде.
-8. После этого — рабочий режим доступен (`daily-plan`, `current-tasks`, `goal-checkin-notifier`, `task-tracker`, `google-calendar-sync`).
+8. **Запустить `help-menu`** — показать полное меню возможностей, чтобы пользователь сразу знал, что бот умеет. Затем предложить первое действие: «Спланировать сегодня?».
+9. После этого — рабочий режим доступен (`daily-plan`, `current-tasks`, `goal-checkin-notifier`, `task-tracker`, `focus-timer`, `goal-materials`, `longterm-stats`, `google-calendar-sync` и др. — см. `help-menu`).
 
 ## Что НЕ делает
 - ❌ Не ставит `setup_status: complete`, пока нет дедлайна (или явного «без дедлайна») и часов.
@@ -70,7 +88,7 @@ description: "Завершает онбординг: спрашивает дед
 | «не нужен календарь» | `calendar: skipped`, продолжить без него |
 
 ## Данные
-- `users/<user_key>/profile.md` → `deadline`, `hours_per_week`, `setup_status: complete`, `calendar: connected|skipped`
+- `users/<user_key>/profile.md` → `deadline`, `hours_per_week`, `priorities`, `daily_load`, (опц.) `difficulty`, `setup_status: complete`, `calendar: connected|skipped`
 
 ## Зависимости
 - После ветки самооценки.

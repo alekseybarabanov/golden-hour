@@ -24,7 +24,7 @@
 > Тип «TV and Limited Input devices» обязателен — именно он даёт device flow (ссылка + код, без браузерного редиректа). Подходит для пользователей в Telegram.
 
 ### Куда положить ключи
-В `C:\Users\screa\.openclaw\secrets.json` добавить блок:
+В `~/.openclaw/secrets.json` (Windows: `%USERPROFILE%\.openclaw\secrets.json`) добавить блок:
 
 ```json
 {
