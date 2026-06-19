@@ -1,0 +1,44 @@
+{
+  "schema": "openclaw.skill-workshop.proposal.v1",
+  "id": "coder-20260619-c0d3",
+  "kind": "create",
+  "status": "applied",
+  "title": "Create coder",
+  "description": "Delegate every user code request in chat to the code-writer subagent via sessions_spawn. Main session never writes code directly.",
+  "createdAt": "2026-06-19T09:00:00.000Z",
+  "updatedAt": "2026-06-19T09:30:00.000Z",
+  "createdBy": "manual",
+  "origin": {
+    "agentId": "code-writer",
+    "sessionKey": "agent:code-writer:webchat:direct",
+    "note": "skill created in collaboration with user during a multi-agent setup session"
+  },
+  "proposedVersion": "v1",
+  "draftFile": "PROPOSAL.md",
+  "target": {
+    "skillName": "coder",
+    "skillKey": "coder",
+    "skillDir": "skills/coder",
+    "skillFile": "skills/coder/SKILL.md",
+    "source": "openclaw-workspace"
+  },
+  "scan": {
+    "state": "clean",
+    "scannedAt": "2026-06-19T09:30:00.000Z",
+    "critical": 0,
+    "warn": 0,
+    "info": 0,
+    "findings": []
+  },
+  "supportFiles": [
+    { "path": "README.md" },
+    { "path": "LICENSE" },
+    { "path": "references/architecture.md" },
+    { "path": "references/tool-restrictions.md" },
+    { "path": "examples/factorial-python.md" },
+    { "path": "examples/ambiguous-sort.md" }
+  ],
+  "goal": "Force the main session to delegate every code-generation request in chat to the code-writer subagent, even for small tasks, instead of writing code in the main session. The main session keeps the dialog context, the subagent keeps the code-generation context.",
+  "evidence": "Without this skill the main agent tends to override code-delegation instructions with 'task is small, faster to do myself' reasoning, producing code in chat text instead of spawning the subagent. Tool-level enforcement (deny write/edit/apply_patch/exec/process on main) plus this skill's MANDATORY directive in the always-on system prompt restore the architecture.",
+  "appliedAt": "2026-06-19T09:30:00.000Z"
+}
