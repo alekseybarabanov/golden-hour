@@ -63,6 +63,8 @@ session-start
 | `goal-materials` | Материалы по цели | applied |
 | `google-calendar-sync` | Синхронизация с Google Calendar | applied |
 | `reflection-loop` | Рефлексия при срывах | applied |
+| `material-cache` | Кэш материалов по темам | applied |
+| `temporal-kg` | Временной граф знаний | proposal |
 | `help-menu` | Меню возможностей | applied |
 | `note-to-file` | Заметки в inbox | proposal |
 | `show-ideas` / `idea-tools` | Дайджест идей | proposal |
