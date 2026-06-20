@@ -6,7 +6,7 @@
   "title": "Create coder",
   "description": "Delegate every user code request in chat to the code-writer subagent via sessions_spawn. Main session never writes code directly.",
   "createdAt": "2026-06-19T09:00:00.000Z",
-  "updatedAt": "2026-06-19T09:30:00.000Z",
+  "updatedAt": "2026-06-20T12:00:00.000Z",
   "createdBy": "manual",
   "origin": {
     "agentId": "code-writer",
@@ -35,8 +35,15 @@
     { "path": "LICENSE" },
     { "path": "references/architecture.md" },
     { "path": "references/tool-restrictions.md" },
+    { "path": "references/gate-pipeline.md" },
     { "path": "examples/factorial-python.md" },
-    { "path": "examples/ambiguous-sort.md" }
+    { "path": "examples/ambiguous-sort.md" },
+    { "path": "../../code-writer-workspace/README.md" },
+    { "path": "../../code-writer-workspace/AGENTS.md" },
+    { "path": "../../code-writer-workspace/agents/clawsec-prompt-injection-check.md" },
+    { "path": "../../code-writer-workspace/agents/complexity-check.md" },
+    { "path": "../../code-writer-workspace/agents/coding-agent.md" },
+    { "path": "../../code-writer-workspace/scripts/complexity-check.ps1" }
   ],
   "goal": "Force the main session to delegate every code-generation request in chat to the code-writer subagent, even for small tasks, instead of writing code in the main session. The main session keeps the dialog context, the subagent keeps the code-generation context.",
   "evidence": "Without this skill the main agent tends to override code-delegation instructions with 'task is small, faster to do myself' reasoning, producing code in chat text instead of spawning the subagent. Tool-level enforcement (deny write/edit/apply_patch/exec/process on main) plus this skill's MANDATORY directive in the always-on system prompt restore the architecture.",
