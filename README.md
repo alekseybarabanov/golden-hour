@@ -70,6 +70,7 @@ session-start
 | `help-menu` | Меню возможностей | applied |
 | `note-to-file` | Заметки в inbox | proposal |
 | `show-ideas` / `idea-tools` | Дайджест идей | proposal |
+| `study-plan-cards` | Визуальный слой плана: cover + недельные карточки PNG (light/dark), 3 режима (`from-plan-file` / `from-state` / `from-topics`), HTML+Edge headless | applied (v0.1.0) |
 
 ### Инфраструктура
 
@@ -86,6 +87,14 @@ node scripts/session-start.mjs --user tg-123456
 node scripts/study-plan.mjs --user tg-123456 --dry-run
 node scripts/daily-plan.mjs --user tg-123456 --dry-run
 node scripts/run-tests.mjs
+```
+
+Визуальные карточки плана:
+
+```powershell
+node skills/study-plan-cards/scripts/render.js --mode=from-plan-file --source=cards/plan.json
+node skills/study-plan-cards/scripts/render.js --mode=from-state --source=state/tasks.yaml
+node skills/study-plan-cards/scripts/render.js --mode=from-topics --themes=dark
 ```
 
 Полный список: [scripts/README.md](scripts/README.md).
