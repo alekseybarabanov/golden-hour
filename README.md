@@ -60,7 +60,8 @@ session-start
 | `task-triage` | Приоритизация и декомпозиция | applied |
 | `spaced-repetition` | Повтор слабых тем | applied |
 | `longterm-stats` | Статистика за период | applied |
-| `study-cards` | PNG-карточки 1080×1440 для плана и статистики (light/dark, Telegram-альбом) | applied |
+| `study-cards` | Render engine: `render.js` + `render-stats.js` (PNG 1080×1440, zero deps) | applied |
+| `study-plan-cards` | Orchestrator: plan/state/topics/full → делегирует рендер в `study-cards` | applied |
 | `goal-materials` | Материалы по цели: add/pick/status; web/file/image/draw через саб-агента | applied |
 | `web-material-finder` | Саб-агент: web/file-поиск, AI-картинки, программная отрисовка (5 режимов) | applied |
 | `google-calendar-sync` | Синхронизация с Google Calendar | applied |
@@ -70,7 +71,6 @@ session-start
 | `help-menu` | Меню возможностей | applied |
 | `note-to-file` | Заметки в inbox | proposal |
 | `show-ideas` / `idea-tools` | Дайджест идей | proposal |
-| `study-plan-cards` | Визуальный слой плана: cover + недельные карточки PNG (light/dark), 3 режима (`from-plan-file` / `from-state` / `from-topics`), HTML+Edge headless | applied (v0.1.0) |
 
 ### Инфраструктура
 
@@ -89,12 +89,12 @@ node scripts/daily-plan.mjs --user tg-123456 --dry-run
 node scripts/run-tests.mjs
 ```
 
-Визуальные карточки плана:
+Визуальные карточки (`study-plan-cards` → `study-cards`):
 
 ```powershell
-node skills/study-plan-cards/scripts/render.js --mode=from-plan-file --source=cards/plan.json
-node skills/study-plan-cards/scripts/render.js --mode=from-state --source=state/tasks.yaml
-node skills/study-plan-cards/scripts/render.js --mode=from-topics --themes=dark
+node skills/study-plan-cards/scripts/render.js --mode=from-plan-file --source=cards/plan.json --output-dir=cards/
+node skills/study-plan-cards/scripts/render.js --mode=from-state --source=state/tasks.yaml --output-dir=cards/
+node skills/study-plan-cards/scripts/render.js --mode=full --plan-source=cards/plan.json --stats-source=state/tasks.yaml --themes=dark
 ```
 
 Полный список: [scripts/README.md](scripts/README.md).

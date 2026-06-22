@@ -1,84 +1,81 @@
 ---
 name: "study-cards"
-description: "PNG-карточки 1080×1440 для учебного плана и статистики: light/dark, кириллица, zero npm deps; отправка альбомом в Telegram."
+description: "Render engine: PNG 1080×1440 for study plans and task stats (light/dark). Called by study-plan-cards; zero npm deps."
 ---
 
-# Study Cards — study-cards
+# Study Cards — render engine
 
-Рендерит мобильные PNG-карточки из `plan.json` (макро-план) и `tasks.yaml` (статистика). **Zero npm-зависимостей** — только Node.js + локальный Edge/Chrome headless. Кириллица из коробки.
+**Низкоуровневый движок рендера.** Не вызывай напрямую из диалога, если пользователь просит «карточки по плану» — сначала **`study-plan-cards`** (он выберет режим, соберёт CardPlan и вызовет этот скилл).
 
-## Когда использовать
+## Роль в связке
 
-- Пользователь просит «покажи план картинками» / «скинь план в тг»
-- После `study-plan` или `daily-plan` — визуализировать недели
-- После `task-tracker` / `longterm-stats` — сводка, дедлайны, категории
-- Отправка альбомом в Telegram (≤ 10 PNG за раз)
+| Скилл | Роль |
+|---|---|
+| **`study-plan-cards`** | Оркестратор: триггеры, источники данных, CardPlan, доставка в Telegram |
+| **`study-cards`** (этот) | Движок: `render.js` + `render-stats.js` → PNG в `--output-dir` |
 
-## Режимы
-
-| Скрипт | Вход | Выход |
-|---|---|---|
-| `render.js` | `plan.json` в cwd | `cover_{light,dark}.png`, `weekN_{light,dark}.png` |
-| `render-stats.js` | `tasks.yaml` (или `--source=PATH`) | `stats_cover_*`, `stats_deadlines_*`, `stats_cats_*` |
-
-## Workflow
-
-### 1. План (от study-plan / daily-plan)
-
-```bash
-cd skills/study-cards
-cp /path/to/plan.json plan.json
-node render.js
+```
+daily-plan / study-plan / exam-topics / task-tracker
+                    │
+                    ▼
+           study-plan-cards  ──exec──►  study-cards/render.js
+                    │                   study-cards/render-stats.js
+                    ▼
+              cards/*.png  ──►  goal-checkin-notifier / Telegram
 ```
 
-Или из workspace пользователя:
+## Скрипты
+
+### `render.js` — план (cover + недели)
 
 ```bash
-node skills/study-cards/render.js
-# plan.json должен лежать рядом со скриптом или в cwd
+node skills/study-cards/render.js \
+  --source=cards/plan.json \
+  --output-dir=cards/ \
+  --themes=light,dark
 ```
 
-### 2. Статистика (от task-tracker)
+Флаги:
+- `--source=` — CardPlan JSON (default: `plan.json` рядом со скриптом)
+- `--output-dir=` — куда писать PNG/HTML (default: каталог скрипта)
+- `--themes=light,dark` — какие темы рендерить
+- `--no-weeks` — только обложка
+
+Выход: `cover_{theme}.png`, `weekN_{theme}.png`
+
+### `render-stats.js` — статистика (task-tracker)
 
 ```bash
-node skills/study-cards/render-stats.js --source=users/<user_key>/state/tasks.yaml
+node skills/study-cards/render-stats.js \
+  --source=users/<user_key>/state/tasks.yaml \
+  --output-dir=cards/ \
+  --themes=dark
 ```
 
-### 3. Отправка в Telegram
+Выход: `stats_cover_*`, `stats_deadlines_*`, `stats_cats_*`
 
-```bash
-openclaw message send --target=<chat> --attachments="cover_dark.png,week1_dark.png,week2_dark.png"
-```
+## Форматы
 
-**Правила альбома:**
-- ≤ 10 файлов за одно сообщение
-- Предпочитать `*_dark.png` для Telegram
-- Порядок: cover → week1 → week2 → …
-
-## Формат plan.json
-
-См. `examples/plan.example.json`. Ключи: `cover` (title, subtitle, target, dates, stats) + `weeks[]` (label, title, subtitle, days[]).
-
-## Формат tasks.yaml
-
-См. `examples/tasks.example.yaml`. Секции `tasks:` и `meta:` — совместимо с `task-tracker`.
+- **CardPlan** (`plan.json`): см. `examples/plan.example.json` и раздел в `study-plan-cards/SKILL.md`
+- **tasks.yaml**: см. `examples/tasks.example.yaml` — совместимо с `task-tracker`
 
 ## Требования
 
 - Node.js **14+**
-- **Microsoft Edge** (Windows) или **Chrome** (Linux/macOS)
-- Переопределить браузер: `EDGE_BIN=/path/to/chrome`
+- Edge (Windows) или Chrome/Chromium — переопределить через `EDGE_BIN`
 
-## Особенности
+## Контракт вывода
 
-- HTML + Edge headless (не AI image-gen) — кириллица без артефактов
-- Уникальный `--user-data-dir` на каждый скриншот (параллельные вызовы)
-- Палитры недель циклически: 🟢 🟠 🟣 🔵
-- Сгенерированные `*.png` и `*.html` в `.gitignore`
+В конце каждый скрипт печатает JSON-строку с manifest:
+
+```json
+{"kind":"plan","outputDir":"...","files":["cover_dark.png","week1_dark.png"]}
+```
+
+`study-plan-cards` использует её для сборки альбома Telegram.
 
 ## Связанные скиллы
 
-- `study-plan` — источник `plan.json`
-- `daily-plan` — дневной план, можно собрать недельную карточку
-- `task-tracker` / `longterm-stats` — источник `tasks.yaml`
-- `goal-checkin-notifier` — доставка карточек в Telegram
+- **`study-plan-cards`** — единственная точка входа для агента
+- `study-plan`, `daily-plan`, `exam-topics` — источники CardPlan
+- `task-tracker`, `longterm-stats` — источник `tasks.yaml`

@@ -1,13 +1,20 @@
 // render-stats.js — рендерит карточки статистики из state/tasks.yaml
-// Использование: node render-stats.js [--source=PATH]
+// Использование: node render-stats.js [--source=PATH] [--output-dir=.] [--themes=light,dark]
 // Зависимости: Node.js + Edge headless
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+const { parseArgs, ensureDir, resolveEdgeBin, parseThemes } = require('./lib/cli');
 
 const BASE = __dirname;
-const arg = process.argv.find(a => a.startsWith('--source='));
-const SOURCE = arg ? arg.split('=').slice(1).join('=') : path.join(BASE, '..', 'state', 'tasks.yaml');
+const args = parseArgs(process.argv);
+const OUT_DIR = path.resolve(args['output-dir'] || BASE);
+const SOURCE = path.resolve(
+  args.source ? args.source : path.join(BASE, '..', 'state', 'tasks.yaml')
+);
+const themes = parseThemes(args);
+
+ensureDir(OUT_DIR);
 
 function parseValue(v) {
   if (v == null) return null;
@@ -259,14 +266,14 @@ function categoriesHtml(s, theme) {
 }
 
 function write(name, content) {
-  const fp = path.join(BASE, name);
+  const fp = path.join(OUT_DIR, name);
   fs.writeFileSync(fp, content, 'utf8');
   return fp;
 }
 
 function shoot(htmlFile, pngFile) {
-  const edge = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
-  const udd = path.join(process.env.TEMP, 'edge_' + Date.now() + '_' + Math.random().toString(36).slice(2,8));
+  const edge = resolveEdgeBin();
+  const udd = path.join(process.env.TEMP || '/tmp', 'edge_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8));
   const url = 'file:///' + htmlFile.replace(/\\/g, '/');
   execSync(`"${edge}" --headless=new --disable-gpu --hide-scrollbars --no-first-run --no-default-browser-check --user-data-dir="${udd}" --force-device-scale-factor=1 --window-size=1080,1440 --screenshot="${pngFile}" "${url}"`, { stdio: 'ignore' });
 }
@@ -274,23 +281,26 @@ function shoot(htmlFile, pngFile) {
 const { tasks, meta } = loadTasks(SOURCE);
 const s = compute(tasks);
 console.log(`Parsed ${tasks.length} tasks from ${SOURCE}`);
+console.log(`Output: ${OUT_DIR}`);
 if (tasks.length) console.log('First task:', tasks[0]);
 
-const themes = ['light', 'dark'];
 const cards = [
-  { name: 'stats_cover',     html: coverHtml },
+  { name: 'stats_cover', html: coverHtml },
   { name: 'stats_deadlines', html: deadlinesHtml },
-  { name: 'stats_cats',      html: categoriesHtml },
+  { name: 'stats_cats', html: categoriesHtml },
 ];
 
+const generated = [];
 let done = 0;
 for (const c of cards) {
   for (const theme of themes) {
     const htmlPath = write(`${c.name}_${theme}.html`, c.html(s, theme));
-    const pngPath = path.join(BASE, `${c.name}_${theme}.png`);
+    const pngPath = path.join(OUT_DIR, `${c.name}_${theme}.png`);
+    generated.push(pngPath);
     try { shoot(htmlPath, pngPath); console.log(`OK ${path.basename(pngPath)}`); done++; }
     catch (e) { console.error(`FAIL ${path.basename(pngPath)}: ${e.message}`); }
   }
 }
 console.log(`Done: ${done}/${cards.length * themes.length}`);
 console.log(`Stats: total=${s.total} closed=${s.closed} active=${s.active} overdue=${s.overdue} progressWeight=${s.progressWeight}%`);
+console.log(JSON.stringify({ kind: 'stats', outputDir: OUT_DIR, files: generated.map(p => path.basename(p)) }));

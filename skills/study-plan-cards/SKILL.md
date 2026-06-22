@@ -1,36 +1,82 @@
 ---
 name: "study-plan-cards"
-description: "Визуальный слой учебного плана: cover + недельные карточки в PNG (light/dark). 3 режима: from-plan-file, from-state, from-topics. Рендер: HTML+Edge headless через cards/render.js."
+description: "Orchestrator for visual study cards: picks source (plan/state/topics/full), builds CardPlan, delegates to study-cards engine, sends Telegram album."
 ---
 
-# study-plan-cards
+# study-plan-cards — orchestrator
 
-Превращает структурированный план в набор визуальных карточек — **обложка + по одной на каждую неделю/блок**, лайт и тёмная темы. Удобно для отправки в мессенджер, печати, шаринга. Mobile-формат 1080×1440.
+**Точка входа для агента.** Превращает план/статистику/темы в PNG-альбом. Сам не рисует — делегирует рендер в **`study-cards`**.
+
+## Связка с study-cards
+
+| Шаг | Кто | Что |
+|---|---|---|
+| 1 | `study-plan-cards` | Определить режим, собрать/найти CardPlan или путь к `tasks.yaml` |
+| 2 | `study-plan-cards` | `exec node skills/study-plan-cards/scripts/render.js --mode=...` |
+| 3 | `study-cards` | `render.js` или `render-stats.js` → PNG в `--output-dir` |
+| 4 | `study-plan-cards` | `message(send, attachments=[...])` альбомом (≤10) |
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  study-plan-cards (SKILL — логика агента)                   │
+│  • триггеры, CardPlan, выбор режима                         │
+│  • scripts/render.js — thin orchestrator                    │
+└──────────────────────────┬──────────────────────────────────┘
+                           │ exec
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│  study-cards (render engine)                                │
+│  • render.js        → cover + weekN (из plan.json)         │
+│  • render-stats.js  → stats_* (из tasks.yaml)              │
+└──────────────────────────┬──────────────────────────────────┘
+                           │ PNG
+                           ▼
+              goal-checkin-notifier / Telegram / note-to-file
+```
 
 ## Триггеры
+
 - «сделай карточки по плану», «расписание в картинках»
 - «/cards», «/plan-cards»
-- «карточка прогресса», «карточка за неделю»
+- «карточка прогресса», «статистика картинками»
 - «раскидай темы по неделям в карточки»
+- «план + прогресс картинками» → режим `full`
 
-## Что делает
+## Режимы
 
-1. **Определить источник** — один из трёх режимов:
-   - `from-plan-file` — `cards/plan.json` или `plans/<period>.json` (от `daily-plan`)
-   - `from-state` — `state/tasks.yaml` (от `task-tracker`/`longterm-stats`)
-   - `from-topics` — `users/<user_key>/profile.md` → `exam_topics[]` (от `exam-topics`)
-2. **Запустить рендер** через `scripts/render.js`:
-   ```bash
-   node skills/study-plan-cards/scripts/render.js \
-        --mode=<mode> [--source=<path>] [--themes=light,dark] [--output-dir=cards/]
-   ```
-3. **Получить PNG-альбом** в `cards/*.png` (cover + week1..N в каждой теме).
-4. **Отправить** в текущий чат через `message(action="send", attachments=[...])`.
-5. **Опционально**:
-   - `note-to-file` → прикрепить PNG в `memory/YYYY-MM-DD.md`
-   - `task-tracker`/`longterm-stats` → сохранить в Obsidian дашборд
+| `--mode` | Источник | Движок study-cards | Когда |
+|---|---|---|---|
+| `from-plan-file` | `cards/plan.json` или `--source=` | `render.js` | Готовый CardPlan от `study-plan` / `daily-plan` |
+| `from-topics` | CardPlan из `exam-topics` + `profile.md` | `render.js` | Агент собрал JSON из `exam_topics[]`, положил в `cards/plan.json` |
+| `from-state` | `state/tasks.yaml` | `render-stats.js` | Прогресс, дедлайны, категории |
+| `full` | plan + tasks | оба скрипта | «Всё сразу»: обложка плана + недели + статистика |
 
-## Структура CardPlan (единый внутренний формат)
+## CLI (оркестратор)
+
+```bash
+# План из JSON
+node skills/study-plan-cards/scripts/render.js \
+  --mode=from-plan-file --source=cards/plan.json --output-dir=cards/ --themes=dark
+
+# Статистика из трекера
+node skills/study-plan-cards/scripts/render.js \
+  --mode=from-state --source=users/<user_key>/state/tasks.yaml --output-dir=cards/
+
+# Темы → сначала агент пишет CardPlan, потом:
+node skills/study-plan-cards/scripts/render.js \
+  --mode=from-topics --source=cards/plan.json --output-dir=cards/
+
+# План + статистика в одну папку
+node skills/study-plan-cards/scripts/render.js \
+  --mode=full \
+  --plan-source=cards/plan.json \
+  --stats-source=users/<user_key>/state/tasks.yaml \
+  --output-dir=cards/ --themes=dark
+```
+
+Общие флаги: `--output-dir=` (default: `cards/`), `--themes=light,dark`, `--no-weeks` (только cover, plan-режимы).
+
+## CardPlan (единый формат между скиллами)
 
 ```json
 {
@@ -52,108 +98,71 @@ description: "Визуальный слой учебного плана: cover +
 }
 ```
 
-## Стыковка с другими скиллами
-
-### ↑ Вход (от кого берём)
-
-| Скилл | Что подхватываем |
-|---|---|
-| `daily-plan` | `users/<user_key>/plans/YYYY-MM-DD.json` — цели+задачи на сегодня. Для недельной карточки — собираем за 7 дней или берём `cards/plan.json`. |
-| `study-plan` | `users/<user_key>/plan.md` — учебный план пользователя. |
-| `task-tracker` | `state/tasks.yaml` → `tasks[]`. Фильтр `task_type=long` или `deadline > today+7д`. |
-| `longterm-stats` | Сводный `period_progress_weight/hours` → в обложку как «сколько сделано». |
-| `exam-topics` | `users/<user_key>/profile.md` → `exam_topics[]` + `exam_subject`, `deadline`, `daily_hours`. |
-| `goal-materials` | `materials/<goal_id>/` → подсказка «📚 материалов: N» в строках карточки. |
-
-### ↓ Выход (кому отдаём)
-
-| Скилл | Что отдаём |
-|---|---|
-| `goal-checkin-notifier` | PNG-альбом → Telegram как morning brief |
-| `daily-study-checkin` | Карточка дня/недели для отчёта |
-| `task-tracker` | `progress_<period>.png` → Obsidian дашборд |
-| `longterm-stats` | Недельная/месячная карточка как отчёт |
-| `note-to-file` | PNG → `memory/YYYY-MM-DD.md` |
-| `focus-timer` | Обложка с дедлайном (TODO v2 — кнопки) |
-
-### Цепочка (happy path)
-
-```
-profile.md (exam_topics) ──┐
-                           ├─► daily-plan ──► plans/*.json ──┐
-plan.md (учебный план) ────┘                                  │
-                                                              ▼
-                                                study-plan-cards
-                                                          │
-                                              ┌───────────┼───────────┐
-                                              ▼           ▼           ▼
-profile.md (topics) ──► exam-topics ───┐   node render.js (zero deps, HTML+Edge headless)
-state/tasks.yaml ──► task-tracker ─────┤           │
-                                          ▼           ▼
-                                  cards/*.png (альбом)
-                                          │
-                ┌─────────────────────────┼─────────────────────────┐
-                ▼                         ▼                         ▼
-   goal-checkin-notifier            note-to-file            longterm-stats
-                │                         │                         │
-                ▼                         ▼                         ▼
-            Telegram              memory/YYYY-MM-DD.md           Obsidian
-```
-
-## Зависимости
-
-- **`scripts/render.js`** — Node.js, zero deps, лежит рядом.
-- **Edge или Chrome** на хосте:
-  - Windows: `C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe`
-  - Прочие ОС: `/usr/bin/google-chrome` или `chromium` (через ENV `EDGE_BIN`)
-- **Node 14+**
-
-## CLI
-
-```bash
-# Из готового CardPlan JSON
-node skills/study-plan-cards/scripts/render.js --mode=from-plan-file --source=cards/plan.json
-
-# Из state/tasks.yaml (прогресс-карточки)
-node skills/study-plan-cards/scripts/render.js --mode=from-state --source=state/tasks.yaml --themes=light,dark
-
-# Из exam_topics в profile.md
-node skills/study-plan-cards/scripts/render.js --mode=from-topics --themes=dark
-
-# Только обложка
-node skills/study-plan-cards/scripts/render.js --mode=from-plan-file --no-weeks
-
-# Кастомная палитра (переопределить первую)
-node skills/study-plan-cards/scripts/render.js --palette='#FF6B6B,#FFE3E3,#2C2C2C'
-```
-
-## Палитры (зашиты в render.js)
-
-1. **зелёная** — `#2E7D32` / `#E8F5E9`, dark `#4CAF50` / `#0E1A12`
-2. **оранжевая** — `#E65100` / `#FFF3E0`, dark `#FF9800` / `#1F140A`
-3. **сиреневая** — `#6A1B9A` / `#F3E5F5`, dark `#BA68C8` / `#170F1F`
-4. **синяя** — `#1565C0` / `#E3F2FD`, dark `#64B5F6` / `#0E1626`
-
-Если недель > 4 — палитры повторяются по кругу.
+Схема общая для `study-plan-cards` (сборка) и `study-cards/render.js` (рендер). Пример: `study-cards/examples/plan.example.json`.
 
 ## Workflow для агента
 
-1. Получить запрос на карточки → определить режим (по источнику)
-2. Положить/обновить `cards/plan.json` (или передать `--source=...`)
-3. `exec("node skills/study-plan-cards/scripts/render.js --mode=...")` → `cards/*.png`
-4. `message(action="send", attachments=[...])` альбомом в текущий чат
-5. Опц.: `note-to-file` / `task-tracker` / `longterm-stats`
+1. **Распознать запрос** → выбрать `--mode`
+2. **Подготовить данные**:
+   - `from-plan-file`: скопировать/сгенерировать `cards/plan.json`
+   - `from-topics`: прочитать `profile.md` → `exam_topics[]` → собрать CardPlan → `cards/plan.json`
+   - `from-state`: путь к `tasks.yaml` (ничего конвертировать не нужно)
+   - `full`: CardPlan + `tasks.yaml`
+3. **Рендер**: `exec("node skills/study-plan-cards/scripts/render.js --mode=... --output-dir=cards/")`
+4. **Собрать альбом** из `cards/*_dark.png`:
+   - `full`: `cover_dark` → `week1_dark`… → `stats_cover_dark` → `stats_deadlines_dark` → `stats_cats_dark`
+   - ≤ 10 файлов; если больше — два альбома (план отдельно, stats отдельно)
+5. **Отправить**: `message(action="send", attachments=[...])`
+6. **Опционально**: `note-to-file`, `longterm-stats` (Obsidian), `goal-checkin-notifier` (утренний бриф)
+
+## Стыковка с другими скиллами
+
+### ↑ Вход
+
+| Скилл | Что подхватываем | Режим |
+|---|---|---|
+| `study-plan` | `users/<user_key>/plan.md` → CardPlan | `from-plan-file` |
+| `daily-plan` | `plans/YYYY-MM-DD.json` → недельный CardPlan | `from-plan-file` |
+| `exam-topics` | `profile.md` → `exam_topics[]` | `from-topics` |
+| `task-tracker` | `state/tasks.yaml` | `from-state` или `full` |
+| `longterm-stats` | сводка → в обложку stats | `from-state` |
+| `goal-materials` | счётчик материалов в topic-строках | `from-topics` |
+
+### ↓ Выход
+
+| Скилл | Что отдаём |
+|---|---|
+| `goal-checkin-notifier` | PNG-альбом в Telegram |
+| `daily-study-checkin` | карточка недели/дня |
+| `longterm-stats` | `progress_*.png` |
+| `note-to-file` | PNG в `memory/YYYY-MM-DD.md` |
+
+## Цепочка (happy path)
+
+```
+profile.md + exam-topics ──► CardPlan (cards/plan.json)
+daily-plan / study-plan ────┘
+                                    │
+                                    ▼
+                          study-plan-cards (mode)
+                                    │
+                    ┌───────────────┴───────────────┐
+                    ▼                               ▼
+         study-cards/render.js          study-cards/render-stats.js
+                    │                               │
+                    └─────────── cards/*.png ───────┘
+                                    │
+                    goal-checkin-notifier → Telegram
+```
 
 ## Lessons learned
 
-- Edge headless требует **уникальный `--user-data-dir`** на каждый вызов — иначе второй и далее процессы падают.
-- AI image-gen (`minimax/image-01`) ломает кириллицу → для русского текста использовать HTML+Edge headless.
-- Telegram принимает альбомы до 10 фото одним сообщением через `attachments[]`.
+- Не дублировать рендер — только `study-cards/`; orchestrator в `study-plan-cards/scripts/render.js`
+- Edge headless: уникальный `--user-data-dir` на каждый скриншот
+- Кириллица: HTML+Edge, не AI image-gen
+- Telegram: альбом ≤ 10 фото
 
-## Адаптации (TODO v2)
-- [ ] Темы через ENV (`THEME=dark`)
-- [ ] Альбомная ориентация для печати
-- [ ] Кнопки в Telegram (`[Начать день]`, `[Открыть задачи]`)
-- [ ] QR-код на обложке (ссылка на Notion/Obsidian)
-- [ ] Локализация `en` / `ru`
-- [ ] Шрифты из Google Fonts
+## См. также
+
+- **`study-cards/SKILL.md`** — CLI движка, форматы, manifest JSON
+- **`study-cards/README.md`** — установка standalone, палитры, примеры
