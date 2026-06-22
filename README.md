@@ -60,7 +60,9 @@ session-start
 | `task-triage` | Приоритизация и декомпозиция | applied |
 | `spaced-repetition` | Повтор слабых тем | applied |
 | `longterm-stats` | Статистика за период | applied |
-| `goal-materials` | Материалы по цели | applied |
+| `study-cards` | PNG-карточки 1080×1440 для плана и статистики (light/dark, Telegram-альбом) | applied |
+| `goal-materials` | Материалы по цели: add/pick/status; web/file/image/draw через саб-агента | applied |
+| `web-material-finder` | Саб-агент: web/file-поиск, AI-картинки, программная отрисовка (5 режимов) | applied |
 | `google-calendar-sync` | Синхронизация с Google Calendar | applied |
 | `reflection-loop` | Рефлексия при срывах | applied |
 | `material-cache` | Кэш материалов по темам | applied |

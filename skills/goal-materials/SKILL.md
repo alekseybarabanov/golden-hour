@@ -1,176 +1,243 @@
 ---
 name: "goal-materials"
-description: "Материалы по целям: задачи/теория/ссылки; add/pick/status; memory/inbox + tg-кнопки."
+description: "Материалы по целям: add/pick/status; web/file-search/image/draw саб-агентом; tg-кнопки."
 ---
 
 # Goal Materials
 
-Библиотека материалов (задачи, теория, ссылки, файлы, заметки), привязанная к целям пользователя из `USER.md` (ЕГЭ, олимпиады, проекты, темы). Скилл умеет и принимать то, что прислал пользователь, и сам подкидывать задачи/искать ссылки по теме. Все материалы дублируются в общий inbox (`memory/notes.jsonl` + `memory/YYYY-MM-DD.md`) для преемственности между сессиями.
+Библиотека материалов (задачи, теория, ссылки, файлы, заметки, **изображения**), привязанная к целям пользователя из `USER.md`. **Web/file/image/draw-поиск через саб-агента `web-material-finder`** в **5 режимах**: topic-based, source-based, file-search, image-generate, draw-programmatic. Бот не блокируется.
 
 ## Когда использовать
 
-- Пользователь прислал задачу/ссылку/формулу/файл и хочет сохранить к цели.
-- Нужно выдать случайный материал по цели («дай задачу по параметрам»).
-- Нужно посмотреть, что уже есть по цели/предмету.
-- Нужно отметить материал как разобранный / не понятый.
-- Скилл сам предлагает задачу или ссылку по теме (по запросу).
-- Любой материал после `add` или `web_search` автоматически попадает в общий inbox (`memory/notes.jsonl` + дневник дня) — для последующего обзора через `show-ideas` / `idea-tools`.
+- add / pick / list / search / status — стандартно
+- URL/файл + «найди похожие» — **source-based**
+- PDF/DOCX/PPTX + «найди в нём» — **file-search**
+- «нарисуй / график / схему (художественно)» — **image-generate** (AI)
+- «нарисуй ТОЧНО / как в учебнике / чертёж с подписями / график функции / электросхему» — **draw** (программно через Python)
+- Fallback: pick/search локально пусто → topic-based
 
 ## Workflow
 
 ### 1. Определить цель
 
-- Если пользователь указал явно (`g_ege_math`, «ЕГЭ математика», «олимпиада по физике») — берём её.
-- Если не указал — читаем активные цели из `USER.md`:
-  - `exam_subjects` + `exam_subject_variants` → цели `exam_<subject>_<variant>`
-  - `olympiad_*` → цели `olymp_<subject>_<grade>`
-  - `purpose` / `topic` → общая цель `topic_<slug>`
-  - Кастомные цели из `USER.md` → `goals: [...]` (если есть)
-- Если активная цель одна — используем без вопроса.
-- Если несколько — спрашиваем одним сообщением со списком.
-- Если целей нет — просим назвать цель или создаём её.
+Стандарт: exam_<subject>_<variant> / olymp_<subject>_<grade> / topic_<slug> / custom.
 
 ### 2. Добавить материал (`add`)
 
-- Типы: `problem`, `theory`, `link`, `file`, `note`.
-- Теги: тема (`производная`, `параметры`, `стереометрия`), источник (`stepik`, `foxford`), уровень (`easy/medium/hard`).
-- Статус при создании: `new`.
-- Путь: `materials/<goal_id>/<type>/YYYY-MM-DD_<slug>.md`.
-- Индекс: `materials/index.json`.
-- Каждый материал — markdown с frontmatter:
-  ```
-  ---
-  id: m_a1b2c3d
-  goal_id: g_ege_math_profile
-  type: problem
-  tags: [параметры, егэ-профиль]
-  status: new
-  source: user
-  created_at: 2026-06-18T11:59:00+03:00
-  status_history:
-    - { status: new, at: 2026-06-18T11:59:00+03:00 }
-  ---
-  ```
-- Если пользователь прислал URL и попросил «найди по этой теме ещё» — скилл может сам подобрать 2–3 ссылки через `web_search` с пометкой `source: web_search` (только если есть активная цель).
+Типы: `problem`, `theory`, `link`, `file`, `note`, **`image`**.
 
-**После создания файла** — обязательно:
-1. Дописать запись в `memory/notes.jsonl`:
+Frontmatter (полный шаблон):
+```yaml
+---
+id: m_<8-hex>
+goal_id: <goal_id>
+type: problem | theory | link | file | note | image
+tags: [<tags>]
+status: new
+source: user | web_search | file_search | image_generate | image_draw
+source_url: <url> | null
+source_path: <file_path> | null
+image_path: <path> | null
+image_url: <url> | null
+image_prompt: <text> | null
+image_model: <name> | null
+draw_backend: <matplotlib|graphviz|schemdraw|tikz> | null
+draw_script_path: <path> | null
+related_to: <id> | null
+relation: <similar|theory_for|solution_for|deeper_version|easier_version> | null
+excerpt: <text> | null
+line_range: <"45-60"> | null
+page: <n> | null
+relevance: <0..1> | null
+created_at: <ISO>
+status_history:
+  - { status: new, at: <ISO> }
+---
+```
+
+**После создания файла:**
+1. `memory/notes.jsonl` (mode-specific поля)
+2. `memory/YYYY-MM-DD.md` (сводная строка)
+
+### 3. `list` / 4. `pick` / 5. `search` / 6. `status`
+
+Стандартно.
+
+### 7. Web/file/image/draw-поиск (через саб-агента)
+
+**НЕ делать web_search / image_generate / matplotlib инлайн.** Вместо этого — `sessions_spawn` саб-агента `web-material-finder`.
+
+```python
+sessions_spawn(
+  task = <TASK_PROMPT>,
+  taskName = f"matfind_{goal_id}_{slug}_{unix_ts}",
+  mode = "run",
+  context = "isolated",
+  toolsAllow = ["web_search", "web_fetch", "read_file", "exec", "write", "image_generate"]
+)
+```
+
+`write` нужен для mode=draw (сохранить .py скрипт в `_inbox/scripts/`).
+
+#### 7.1 Topic-based (по теме)
+`mode: "topic"`, web-поиск, placeholder `🔍`, JSON → материалы.
+
+#### 7.2 Source-based (по источнику)
+`mode: "source"`, `source_url`/`source_file` + `source_mode`, placeholder `🔗`, JSON → материалы с `related_to`+`relation`.
+
+#### 7.3 File-search (PDF/DOCX/PPTX)
+`mode: "file"`, `file_path` + `search_query`, placeholder `📄`, JSON → excerpts.
+
+#### 7.4 Image-generate (AI-генерация картинки)
+
+`mode: "image"`, `image_prompt` + опц. `reference_image`. Саб-агент вызывает `image_generate` (default: **`minimax/image-01`** — единственная сконфигурированная модель).
+
+⚠️ **Известные ограничения AI image gen:**
+- Текст в картинке — мусор (A₁ → «A1» или «1», α → не отрисовано)
+- Математическая нотация — индексы, степени, греческие буквы — ломаются
+- Точные геометрические отношения — приблизительные
+- **Для схем с подписями вершин → используй mode=draw**
+
+Placeholder `🎨`, JSON → материал с `image_path`/`image_prompt`/`image_model`. Кнопки `[✅ Сохранить] [🔄 Перегенерировать] [📐 Другой стиль]`.
+
+#### 7.5 Draw (программная отрисовка — ТОЧНЫЕ чертежи)
+
+Когда юзер просит **точную, чистую, учебниковую** схему — НЕ AI, а **программно** через Python (matplotlib/graphviz/schemdraw/tikz). Результат — идеальный как в учебнике: точные координаты, правильные подписи, корректная геометрия.
+
+**Триггеры:**
+- «нарисуй **точно** / **как в учебнике** / **чисто**»
+- «построй график функции y = …»
+- «чертёж куба / пирамиды / сферы / сечения»
+- «электросхема / блок-схема»
+- «3D-фигура с подписями»
+- «TikZ / matplotlib / graphviz»
+
+**Когда AI (mode=image) НЕ подходит → draw:**
+- Любые схемы с подписями вершин (A, B, C, D, A₁…)
+- Графики функций (точный масштаб, оси, метки)
+- Геометрические чертежи (точные координаты)
+- Электросхемы / блок-схемы / mind-maps
+- Таблицы / матрицы / формулы (LaTeX → PNG)
+
+**Алгоритм:**
+
+1. **Определить `draw_type`:**
+   - `cube / pyramid / sphere / geometry` → **matplotlib** (mpl_toolkits3d)
+   - `function_plot / graph_2d` → **matplotlib** (pyplot)
+   - `diagram / flowchart / tree` → **graphviz**
+   - `circuit` → **schemdraw**
+   - `latex_formula` → **matplotlib** (math + mathtext) или LaTeX → PNG
+   - `geometric_2d` → **matplotlib** (patches)
+2. **Саб-агент пишет Python-скрипт** в `materials/_inbox/scripts/<slug>.py`:
+   ```python
+   # пример для куба
+   import matplotlib
+   matplotlib.use('Agg')
+   import matplotlib.pyplot as plt
+   from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+   import numpy as np
+   # ... код чертежа ...
+   plt.savefig(r'<output_path>', dpi=150, bbox_inches='tight')
+   ```
+3. **Саб-агент выполняет** через `exec("python <script_path>")`.
+4. **Саб-агент проверяет**, что PNG создан, читает метаданные (размер).
+5. **Если не получилось** — правит скрипт (макс 3 попытки).
+6. **Возвращает JSON:**
    ```json
-   {"type":"material","id":"m_<id>","goal_id":"...","material_type":"problem","title":"...","tags":[...],"source":"user|web_search","source_url":null,"path":"materials/.../file.md","is_idea":false,"created_at":"<ISO>"}
+   {
+     "goal_id": "...",
+     "mode": "draw",
+     "sources": [{
+       "title": "...",
+       "type": "image",
+       "tags": [...],
+       "summary": "...",
+       "image_path": "<путь к PNG>",
+       "image_url": null,
+       "draw_backend": "matplotlib|graphviz|schemdraw|tikz",
+       "draw_script_path": "<путь к .py>",
+       "draw_type": "cube|graph_2d|..."
+     }]
+   }
    ```
-2. Дописать строку в `memory/YYYY-MM-DD.md` (дневник дня):
+
+7. **Бот копирует PNG** в `materials/<goal_id>/images/YYYY-MM-DD_<slug>.png`, создаёт frontmatter с `source: "image_draw"`, `draw_backend`, `draw_script_path`. Скрипт остаётся в `_inbox/scripts/` (для повторного использования).
+
+8. **Placeholder/результат в TG:**
    ```
-   - 12:42  📎 [exam_math_profile] problem «Задача 16: стереометрия (куб)» → materials/exam_math_profile/problems/2026-06-18_stereometriya_kub.md
+   # placeholder:
+   📐 Чертёж «<prompt>» (программно)…
+   [⏹ Отменить]
+
+   # результат:
+   📐 Готово:
+   [image inline]
+   [✅ Сохранить] [🔄 Перегенерировать] [🛠 Изменить скрипт]
    ```
 
-### 3. Посмотреть что есть (`list`)
+**Преимущества mode=draw:**
+- ✅ Точные координаты, никаких артефактов
+- ✅ Правильные подписи (A₁, B₁, α, β, π, …)
+- ✅ Чистый LaTeX для формул
+- ✅ Воспроизводимо (скрипт сохраняется)
+- ✅ Можно докрутить позже (изменить скрипт → регенерация)
 
-- По цели: `materials list g_ege_math` → сгруппировано по типу и статусу.
-- По тегу: `materials list --tag параметры`.
-- Сводка: `materials list --summary` → счётчики по статусам.
+**Ограничения:**
+- Требует `matplotlib` / `graphviz` / etc. в окружении (ставится через pip)
+- Саб-агент должен уметь писать корректный Python-код
 
-### 4. Выдать материал (`pick`)
+**Окружение (поставить, если нет):**
+- `pip install matplotlib` (для графиков и 3D)
+- `pip install graphviz` + system Graphviz (для диаграмм)
+- `pip install schemdraw` (для электросхем)
 
-- Случайный из `new` (свежее) или из `working` (добить).
-- Фильтры: `--type`, `--tag`, `--status`.
-- Возвращает содержимое + переводит в `working`.
+## Telegram-интерфейс
 
-### 5. Поиск (`search`)
+**Команды:** стандартные кнопки.
 
-- По тексту/тегу/типу/статусу. Grep по markdown + индекс.
+**Поиск/генерация placeholder:** `[⏹ Отменить]`.
 
-### 6. Изменить статус (`status`)
+**Результаты по режимам:**
+- topic/source/file: `[✅ В работу] [⏭ Пропустить]` + кнопка источника/файла
+- image-generate: `[✅ Сохранить] [🔄 Перегенерировать] [📐 Другой стиль]`
+- **draw**: `[✅ Сохранить] [🔄 Перегенерировать] [🛠 Изменить скрипт]` (последняя → бот показывает скрипт и предлагает отредактировать)
 
-Переходы:
-- `new` → `working` (вручную или автоматом из `pick`)
-- `working` → `understood` (разобрался)
-- `working` → `stuck` (не понял, нужен разбор)
-- `stuck` → `working` (вернулся)
-- `stuck` → `understood`
-- `understood` → `archived` (неактуально)
-
-Каждое изменение пишется в `status_history`. Смены `understood`/`stuck`/`archived` дополнительно отражаются в `memory/YYYY-MM-DD.md` строкой (но НЕ дублируются в `notes.jsonl` — там только материалы, не события).
-
-## Telegram-интерфейс (inline buttons)
-
-Все ответы бота сопровождаются inline-кнопками (Telegram `inline_keyboard`). Полное описание — `references/tg-buttons.md`.
-
-**Кнопки по командам:**
-
-- **`pick` (выдача материала):**
-  ```
-  [✅ Разобрала]  [❌ Не поняла]  [⏭ Пропустить]
-  ```
-  callback_data: `mat:status:<id>:understood` / `:stuck` / `:archived`
-
-- **`list` (у каждого материала):**
-  ```
-  [Открыть]  [В работу]  [🗑 В архив]
-  ```
-  callback_data: `mat:show:<id>` / `mat:status:<id>:working` / `:archived`
-
-- **`add` (после добавления):**
-  ```
-  [Открыть]  [Добавить ещё]
-  ```
-  callback_data: `mat:show:<id>` / `mat:add:continue`
-
-- **`search` (у найденных):**
-  ```
-  [Открыть]  [В работу]
-  ```
-  callback_data: `mat:show:<id>` / `mat:status:<id>:working`
-
-**Обработка callback:** callback приходит в агента как сообщение с `callback_data`. Агент:
-1. Парсит `mat:<action>:<id>[:<value>]`
-2. Выполняет команду (`status`, `show`, `add`)
-3. Обновляет файл материала + `index.json` + при `understood`/`stuck` пишет строку в `memory/YYYY-MM-DD.md`
-4. Отвечает коротким confirm-сообщением (без кнопок) или редактирует исходное сообщение
+**Callbacks:**
+- `mat:cancel:<taskName>` — отменить
+- `mat:regen:<id>` — респавн с тем же промптом
+- `mat:restyle:<id>` (image) — спросить стиль → респавн
+- `mat:editscript:<id>` (draw) — показать `.py` скрипт, юзер правит → регенерация
 
 ## Хранение
 
 ```
 materials/
   index.json
+  _inbox/
+    <incoming_files>
+    scripts/<slug>.py          # скрипты для mode=draw
   <goal_id>/
-    problems/YYYY-MM-DD_<slug>.md
-    theory/YYYY-MM-DD_<slug>.md
-    links/YYYY-MM-DD_<slug>.md
-    files/
-    notes/YYYY-MM-DD_<slug>.md
+    problems/ theory/ links/ files/ notes/
+    images/YYYY-MM-DD_<slug>.png    # для image-generate и draw результатов
 ```
-
-```
-memory/
-  notes.jsonl                    # общий inbox
-  YYYY-MM-DD.md                  # дневник дня
-```
-
-`index.json` обновляется при каждом `add`/`status`. Переиндексация — `materials rebuild-index`.
-`notes.jsonl` обновляется при каждом `add` (но не при `status`).
 
 ## Источники материалов
 
-- **От пользователя**: текст/ссылка/файл из сообщения. Скилл парсит и нормализует (frontmatter + slug из заголовка/первой строки).
-- **От скилла**:
-  - Из своего склада (`pick`).
-  - Через `web_search` (если запрос «дай задачу/найди ссылку по теме» и тема распознана). Каждая найденная ссылка — отдельный материал с `source: web_search` и записью в inbox.
-- Без активной цели web-поиск отключён.
+- **От пользователя** / **Из локальной библиотеки** / **Через саб-агента `web-material-finder`** — 5 режимов:
+  - topic / source / file — поиск контента
+  - **image-generate** — AI-художество (minimax/image-01)
+  - **draw** — программная отрисовка (matplotlib/graphviz/schemdraw/tikz) для точных чертежей
 
 ## Конвенции
 
-- ID материала: `m_<8-символов>` (от timestamp + slug).
-- Имя файла: `YYYY-MM-DD_<slug>.md`, slug транслитом, lower-case, без спецсимволов.
-- Теги — lower-case, kebab-case, без `#`.
-- Статусы — только фиксированный набор: `new`, `working`, `stuck`, `understood`, `archived`.
-- Записи в `notes.jsonl` — по одной JSON-строке, `type: "material"`, `is_idea: false`.
-
-## Связь с USER.md
-
-При старте скилл парсит `USER.md` и кеширует цели (обновлять при изменении). Если `USER.md` пустой или целей нет — скилл просит назвать цель или создать её.
+- ID: `m_<8-hex>`, slug транслитом.
+- `taskName`: `matfind_<goal>_<slug>_<unix_ts>`.
+- mode=image: `source: "image_generate"`, `image_model` (default `minimax/image-01`), `image_prompt`.
+- **mode=draw: `source: "image_draw"`, `draw_backend` (matplotlib/graphviz/schemdraw/tikz), `draw_script_path`, `draw_type`.**
+- Дедупликация: перекрытие >70% → один с большей relevance.
+- TG-аплоады → `materials/_inbox/`.
 
 ## Связь с другими скиллами
 
-- **`note-to-file`** — формат записи в `memory/notes.jsonl` совместим (тот же файл).
-- **`show-ideas` / `idea-tools`** — материалы попадают в общий поток; можно фильтровать по `type=material` или `goal_id`.
-- **`focus-timer`** — может писать минуты, потраченные на конкретный материал, в `materials/<id>/time_log.md` (опционально, не автоматом).
+- **`web-material-finder`** — саб-агент, 5 режимов. `sessions_spawn` с `toolsAllow: ["web_search", "web_fetch", "read_file", "exec", "write", "image_generate"]`.
+- **`note-to-file`** / **`show-ideas`** / **`focus-timer`** — стандартно.
