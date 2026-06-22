@@ -191,3 +191,102 @@ Every credit is also appended to `log/YYYY-MM-DD-stats.jsonl`:
 ### Other skills reading this file
 
 `pomodoro` is the canonical WRITER of `stats.json`. Other skills (`longterm-stats`, dashboards, etc.) should READ but should not WRITE — concurrent writes from multiple skills will corrupt the per-date maps. If a consumer needs to add its own counters, it should maintain a separate file and merge at display time.
+
+
+## Scheduled session state (extends `session.json`)
+
+When a session is started via the scheduled-session flow (SKILL.md step 10), the active state file gets additional fields. The fields are absent (or `null`) for immediate sessions started via `/pomodoro start`.
+
+```json
+{
+  "schema": "openclaw.pomodoro.session.v1",
+  "mode": "scheduled",
+  "variant": "classic",
+  "phase": "work",
+  "phase_started_at": "2026-06-22T15:00:00+03:00",
+  "phase_duration_minutes": 25,
+  "scheduled_blocks": [
+    { "phase": "work",      "start_at": "2026-06-22T15:00:00+03:00", "duration_minutes": 25 },
+    { "phase": "break",     "start_at": "2026-06-22T15:25:00+03:00", "duration_minutes": 5 },
+    { "phase": "work",      "start_at": "2026-06-22T15:30:00+03:00", "duration_minutes": 25 },
+    { "phase": "break",     "start_at": "2026-06-22T15:55:00+03:00", "duration_minutes": 5 },
+    { "phase": "work",      "start_at": "2026-06-22T16:00:00+03:00", "duration_minutes": 25 },
+    { "phase": "break",     "start_at": "2026-06-22T16:25:00+03:00", "duration_minutes": 5 },
+    { "phase": "work",      "start_at": "2026-06-22T16:30:00+03:00", "duration_minutes": 25 },
+    { "phase": "break",     "start_at": "2026-06-22T16:55:00+03:00", "duration_minutes": 5 }
+  ],
+  "scheduled_block_index": 0,
+  "window_start_at": "2026-06-22T15:00:00+03:00",
+  "window_end_at": "2026-06-22T17:00:00+03:00",
+  "window_topic": "физика",
+  "window_source": "plan",
+  "cycles_done": 0,
+  "long_break_every": 4,
+  "work_minutes": 25,
+  "break_minutes": 5,
+  "long_break_minutes": 15,
+  "started_at": "2026-06-22T15:00:00+03:00",
+  "chat_id": "12345678",
+  "deferred_count": 0,
+  "dialog_opened": true
+}
+```
+
+- `mode` is `"scheduled"` for time-windowed sessions, `null` or absent for immediate sessions.
+- `scheduled_blocks` is the full frozen sequence generated at confirmation time. The tick loop reads this array and uses `scheduled_block_index` to know which block is current. When the current block ends, `scheduled_block_index` advances. When the index reaches the end of the array AND `now >= window_end_at`, the session ends with `ended_reason: "window_complete"`.
+- `window_start_at` and `window_end_at` are ISO-8601 timestamps defining the user's window. The session may not extend past `window_end_at` (unless `window_end_action: finish_phase` is set and the current block is in progress).
+- `window_topic` is the plan task name (or user-provided free text).
+- `window_source` is `"plan"` if the window came from the plan lookup, `"user"` if the user provided it explicitly, `"duration"` if the user used the `2h` shorthand.
+- The tick loop logic for scheduled sessions is: read `scheduled_blocks[scheduled_block_index]`, compute `elapsed = now - block.start_at`, when `elapsed >= block.duration_minutes * 60_000`, advance to `scheduled_blocks[scheduled_block_index + 1]` and write the new state.
+
+### Drift recovery for scheduled sessions
+
+If a tick is missed and `now` is past multiple block boundaries:
+- If `now >= window_end_at` — end the session cleanly.
+- Otherwise, advance `scheduled_block_index` to the latest block whose `start_at + duration_minutes * 60_000 <= now`.
+- Do NOT run blocks whose `start_at` is in the past (they are silently dropped).
+- Stats credit the planned work minutes for the block that was active when the missed-tick gap was detected (no backfill).
+
+## Pending schedule proposal (transient state)
+
+When the user requests a scheduled session, the skill generates a proposal and holds it in a transient state file until the user confirms, edits, or cancels. The proposal auto-expires.
+
+File: `~/.openclaw/pomodoro/schedule-pending.json`
+
+```json
+{
+  "schema": "openclaw.pomodoro.schedule-pending.v1",
+  "chat_id": "12345678",
+  "proposal_id": "prop-2026-06-22T15:00:00-abc123",
+  "created_at": "2026-06-22T14:55:00+03:00",
+  "expires_at": "2026-06-22T15:25:00+03:00",
+  "window_start_at": "2026-06-22T15:00:00+03:00",
+  "window_end_at": "2026-06-22T17:00:00+03:00",
+  "window_topic": "физика",
+  "window_source": "plan",
+  "variant": "classic",
+  "scheduled_blocks": [
+    { "phase": "work",  "start_at": "...", "duration_minutes": 25 },
+    { "phase": "break", "start_at": "...", "duration_minutes": 5 }
+  ]
+}
+```
+
+- `proposal_id` is a unique ID used in inline button callback_data and in the audit log.
+- `expires_at` = `created_at + schedule_proposal_ttl_minutes`. After this, the proposal is silently dropped — no session starts.
+- Only one pending proposal per `chat_id` is allowed. If the user requests another `/pomodoro schedule` while a proposal is pending, the previous proposal is replaced (the old one is logged as `superseded` in the schedule log).
+- The proposal is deleted when: (a) the user confirms (the proposal's data is copied into `session.json` and the file is removed); (b) the user cancels (file is removed, `schedule-cancelled` template sent); (c) the proposal expires (file is removed silently).
+
+## Per-day schedule audit log
+
+One row per schedule proposal and confirmation, appended to `log/YYYY-MM-DD-schedule.jsonl`:
+
+```json
+{"ts": "2026-06-22T14:55:00+03:00", "chat_id": "12345678", "proposal_id": "prop-...", "event": "proposed", "variant": "classic", "window_start": "15:00", "window_end": "17:00", "topic": "физика", "window_source": "plan", "block_count": 8}
+{"ts": "2026-06-22T14:56:00+03:00", "chat_id": "12345678", "proposal_id": "prop-...", "event": "confirmed"}
+{"ts": "2026-06-22T14:57:00+03:00", "chat_id": "12345678", "proposal_id": "prop-...", "event": "cancelled", "reason": "user"}
+{"ts": "2026-06-22T15:00:00+03:00", "chat_id": "12345678", "proposal_id": "prop-...", "event": "superseded"}
+{"ts": "2026-06-22T15:25:00+03:00", "chat_id": "12345678", "proposal_id": "prop-...", "event": "expired"}
+```
+
+`event` values: `proposed`, `confirmed`, `cancelled`, `superseded`, `expired`. This log is the source of truth for "did the user see the proposal", "did they confirm", "did the proposal ever get started late" — useful for tuning the suggestion flow.

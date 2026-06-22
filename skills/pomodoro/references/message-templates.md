@@ -142,3 +142,93 @@ Reply to `/pomodoro stats`. Shows today's work time, today's cycle count, and li
 `{today_work_minutes}` is the sum of credited minutes for today's date in `stats.json` (keyed by local-time `YYYY-MM-DD`). `{today_cycles}` is the number of completed work blocks today. `{total_work_minutes}` and `{total_cycles}` are the lifetime sums from the same file. If `stats.json` is missing, show zeros (the file is created on the first work-block credit, not on skill install).
 
 If the user asks for more detail (e.g. "покажи по дням"), the skill can read `stats.json` and produce a longer breakdown — that reply is ad-hoc, not a templated notification.
+
+
+## schedule-proposal
+
+Reply when the user asks to work in a time window and the skill has generated a proposed schedule (step 10). Shows the window, topic, full sequence of work/break blocks with start times, and asks for confirmation. Inline buttons: `[Подтвердить] [Изменить] [Отмена]`.
+
+```
+🗓 Расписание по плану ({from}–{to}, {topic}):
+
+🔴 {block1_start}–{block1_end} работа ({block1_min} мин)
+🟢 {block2_start}–{block2_end} перерыв ({block2_min} мин)
+🔴 {block3_start}–{block3_end} работа
+🟢 {block4_start}–{block4_end} перерыв
+…(и так далее)
+
+Итого: {total_work} работы, {total_break} перерывов, {total_cycles} циклов.
+
+Подойдёт? Или скажи другое время.
+```
+
+The actual list of blocks is generated from `scheduled_blocks` and rendered with start/end times computed by adding durations. The variant emoji is `🔴` for work, `🟢` for short break, `🌿` for long break. If a long break is shrunk to fit the window, the rendered line is marked `(укороченный)`.
+
+For example, for a 15:00-17:00 window with classic variant (25/5, last break ends exactly at 17:00):
+```
+🥗 Расписание по плану (15:00-17:00, физика):
+
+🔴 15:00-15:25 работа (25 мин)
+🟢 15:25-15:30 перерыв (5 мин)
+🔴 15:30-15:55 работа
+🟢 15:55-16:00 перерыв
+🔴 16:00-16:25 работа
+🟢 16:25-16:30 перерыв
+🔴 16:30-16:55 работа
+🟢 16:55-17:00 перерыв
+
+Итого: 1ч 40м работы, 20 мин перерывов, 4 цикла. Сессия заканчивается ровно в 17:00.
+
+Подойдёт? Или скажи другое время.
+```
+
+## schedule-no-plan
+
+Reply when the user asked for `/pomodoro schedule plan` but no current/next plan block exists. Warm, with a prompt to specify a window explicitly.
+
+```
+В плане на сегодня нет подходящего блока. Скажи время вручную:
+• `/pomodoro schedule 15:00-17:00` — точное окно
+• `/pomodoro schedule 2h` — два часа от сейчас
+• `/pomodoro start classic` — сразу, без окна
+```
+
+## schedule-too-short
+
+Reply when the requested window is too small for even one work block (or for the chosen variant's minimum cycle). Warm, with the minimum window size for each variant.
+
+```
+Окно слишком маленькое для {variant}. Минимум:
+• classic — 30 мин (25+5)
+• long — 60 мин (50+10)
+• extended — 120 мин (100+20)
+• short — 20 мин (15+3)
+
+Скажи другое время, или начни с `/pomodoro start {variant}` сразу.
+```
+
+## schedule-cancelled
+
+Reply when the user clicks `[Отмена]` or types cancel intent during the confirmation flow.
+
+```
+Окей, расписание отменено. Скажи, когда будешь готов(а) — `/pomodoro start` или `/pomodoro schedule`.
+```
+
+## window-end
+
+Sent when a scheduled session ends naturally at the window boundary (step 10).
+
+```
+🏁 Время вышло. Сессия {from}–{to} завершена: {cycles} циклов, {work_min} работы.
+```
+
+## window-end-soon
+
+Sent 5 minutes before `window_end_at` when `window_end_action: ask`. Asks the user what to do. Inline buttons: `[Завершить] [Дать дойти] [Продлить]`.
+
+```
+⏰ До конца окна ({to}) — 5 мин. Завершить сейчас, дать текущей фазе дойти, или продлить?
+```
+
+Buttons: `pomodoro:window:end` (Завершить), `pomodoro:window:finish` (Дать дойти), `pomodoro:window:extend` (Продлить на 15 мин).
