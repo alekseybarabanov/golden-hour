@@ -1,12 +1,22 @@
 // render.js — рендерит cover + week-карточки в HTML и PNG (лайт и тёмная тема)
-// Использование: node render.js
+// Использование:
+//   node render.js [--source=plan.json] [--output-dir=.] [--themes=light,dark] [--no-weeks]
 // Зависимости: только Node.js + локальный Edge/Chrome (msedge --headless)
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+const { parseArgs, ensureDir, resolveEdgeBin, parseThemes } = require('./lib/cli');
 
 const BASE = __dirname;
-const PLAN = JSON.parse(fs.readFileSync(path.join(BASE, 'plan.json'), 'utf8'));
+const args = parseArgs(process.argv);
+const OUT_DIR = path.resolve(args['output-dir'] || BASE);
+const SOURCE = path.resolve(args.source || path.join(BASE, 'plan.json'));
+const themes = parseThemes(args);
+const noWeeks = !!args['no-weeks'];
+
+ensureDir(OUT_DIR);
+const PLAN = JSON.parse(fs.readFileSync(SOURCE, 'utf8'));
+if (noWeeks) PLAN.weeks = [];
 
 // Палитры для каждой недели (лайт + тёмная)
 const PALETTES = [
@@ -121,38 +131,42 @@ function coverHtml(theme) {
 
 // Рендер
 function write(name, content) {
-  const fp = path.join(BASE, name);
+  const fp = path.join(OUT_DIR, name);
   fs.writeFileSync(fp, content, 'utf8');
   return fp;
 }
 
-// Скриншот через Edge
+// Скриншот через Edge/Chrome
 function shoot(htmlFile, pngFile) {
-  const edge = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
-  const udd = path.join(process.env.TEMP, 'edge_' + Date.now() + '_' + Math.random().toString(36).slice(2,8));
+  const edge = resolveEdgeBin();
+  const udd = path.join(process.env.TEMP || '/tmp', 'edge_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8));
   const url = 'file:///' + htmlFile.replace(/\\/g, '/');
   execSync(`"${edge}" --headless=new --disable-gpu --hide-scrollbars --no-first-run --no-default-browser-check --user-data-dir="${udd}" --force-device-scale-factor=1 --window-size=1080,1440 --screenshot="${pngFile}" "${url}"`, { stdio: 'ignore' });
 }
 
 const tasks = [];
-const themes = ['light', 'dark'];
+const generated = [];
 
 // Cover
 themes.forEach(theme => {
   const html = write(`cover_${theme}.html`, coverHtml(theme));
-  const png = path.join(BASE, `cover_${theme}.png`);
+  const png = path.join(OUT_DIR, `cover_${theme}.png`);
   tasks.push({ html, png });
+  generated.push(png);
 });
 
 // Weeks
-PLAN.weeks.forEach((week, i) => {
+(PLAN.weeks || []).forEach((week, i) => {
   themes.forEach(theme => {
-    const html = write(`week${i+1}_${theme}.html`, weekHtml(week, PALETTES[i], theme));
-    const png = path.join(BASE, `week${i+1}_${theme}.png`);
+    const html = write(`week${i + 1}_${theme}.html`, weekHtml(week, PALETTES[i % PALETTES.length], theme));
+    const png = path.join(OUT_DIR, `week${i + 1}_${theme}.png`);
     tasks.push({ html, png });
+    generated.push(png);
   });
 });
 
+console.log(`Source: ${SOURCE}`);
+console.log(`Output: ${OUT_DIR}`);
 console.log(`Renders queued: ${tasks.length}`);
 let done = 0;
 for (const t of tasks) {
@@ -160,3 +174,4 @@ for (const t of tasks) {
   catch (e) { console.error(`FAIL ${path.basename(t.png)}: ${e.message}`); }
 }
 console.log(`Done: ${done}/${tasks.length}`);
+console.log(JSON.stringify({ kind: 'plan', outputDir: OUT_DIR, files: generated.map(p => path.basename(p)) }));
