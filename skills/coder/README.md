@@ -31,10 +31,10 @@ OpenClaw-скилл, который делает один простой, но *
                                      ┌────────────────────┐
                                      │  code-writer       │
                                      │  (isolated spec.)  │
-                                     │  - read, write,    │
-                                     │  - edit,           │
-                                     │  - apply_patch,    │
-                                     │  - exec, process   │
+                                     │  gates:            │
+                                     │  clawsec →         │
+                                     │  complexity-check →│
+                                     │  coding-agent      │
                                      └─────────┬──────────┘
                                                │ return code
                                                ▼
@@ -55,7 +55,20 @@ OpenClaw-скилл, который делает один простой, но *
 cp -r skills/coder ~/.openclaw/workspace/skills/
 ```
 
-### 2. Убедиться, что в `openclaw.json` есть оба агента и binding
+### 2. Развернуть воркспейс code-writer с gate-суб-агентами
+
+```bash
+cp -r code-writer-workspace ~/.openclaw/workspace-code
+```
+
+В `code-writer-workspace/` лежат три суб-агента:
+- **clawsec** — проверка prompt-injection на каждом turn
+- **complexity-check** — оценка сложности (лимит 1000 строк)
+- **coding-agent** — изолированный писатель кода с self-gate
+
+Подробнее: `references/gate-pipeline.md` и `code-writer-workspace/README.md`.
+
+### 3. Убедиться, что в `openclaw.json` есть оба агента и binding
 
 Минимальный конфиг — см. `references/architecture.md`. Ключевые точки:
 
@@ -64,7 +77,7 @@ cp -r skills/coder ~/.openclaw/workspace/skills/
 - `bindings` маршрутизирует нужный канал (например, `telegram`) на `main`.
 - `main.tools.deny` блокирует `write`, `edit`, `apply_patch`, `exec`, `process` — main физически не может генерить код сам. Это страховка: даже если скилл по какой-то причине не загрузится, архитектура всё равно работает.
 
-### 3. Перезапустить gateway
+### 4. Перезапустить gateway
 
 ```bash
 openclaw config validate
@@ -98,6 +111,7 @@ skills/coder/
 ├── proposal.json         # метаданные Skill Workshop
 ├── references/
 │   ├── architecture.md   # детальная схема main ↔ code-writer
+│   ├── gate-pipeline.md  # clawsec → complexity-check → coding-agent
 │   └── tool-restrictions.md  # почему main деноит code-writing tools
 └── examples/
     ├── factorial-python.md   # happy path: пользователь просит код, main делегирует
