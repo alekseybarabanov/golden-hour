@@ -1,0 +1,55 @@
+{
+  "schema": "openclaw.skill-workshop.proposal.v1",
+  "id": "pomodoro-20260622-0e7298eb4a",
+  "kind": "create",
+  "status": "applied",
+  "title": "Create pomodoro",
+  "description": "Telegram Pomodoro technique timer with classic/long/extended/short variants and custom user-supplied durations, phase-transition notifications, automatic work-time statistics accumulation into a durable stats.json file, do-not-disturb mode during active sessions, proactive once-per-day suggestions when the user falls behind on their plan, time-windowed scheduled sessions driven by the user's plan (with confirmation flow, plan-driven window lookup, deterministic schedule generation that fits the window exactly), and crash-safe session state.",
+  "createdAt": "2026-06-22T10:00:00.000Z",
+  "updatedAt": "2026-06-22T15:55:00.000Z",
+  "createdBy": "skill-workshop",
+  "origin": {
+    "agentId": "code-writer",
+    "sessionKey": "agent:code-writer:dashboard:3c8cfcbf-842a-4332-aabf-cd2f0b51bc2a",
+    "runId": "eff1cc4a-96a7-4652-abba-dfb1e2cdd9bd",
+    "messageId": "eff1cc4a-96a7-4652-abba-dfb1e2cdd9bd"
+  },
+  "proposedVersion": "v8",
+  "draftFile": "PROPOSAL.md",
+  "draftHash": "7981F90E917CAE60BC6766A9C99A5FD66E7111B8A9823B09BE23F6B93C0EA9B8",
+  "target": {
+    "skillName": "pomodoro",
+    "skillKey": "pomodoro",
+    "skillDir": "skills/pomodoro",
+    "skillFile": "skills/pomodoro/SKILL.md",
+    "source": "openclaw-workspace"
+  },
+  "scan": {
+    "state": "clean",
+    "scannedAt": "2026-06-22T10:48:00.000Z",
+    "critical": 0,
+    "warn": 0,
+    "info": 0,
+    "findings": []
+  },
+  "supportFiles": [
+    {
+      "path": "references/data-schema.md",
+      "sizeBytes": 15157,
+      "hash": "95A2FF04AD8AD8399A2DE427E7213212840D0C32F6F485DAB65DB6C6AEB30EA5"
+    },
+    {
+      "path": "references/message-templates.md",
+      "sizeBytes": 10084,
+      "hash": "FC50DE47A3E8E3EA9BA1C289F092E0576F3EB0DF7828044D33795405CC4AA64D"
+    },
+    {
+      "path": "references/tg-delivery.md",
+      "sizeBytes": 2094,
+      "hash": "F8090312BE24382A86273AA253ACA09B645960105905C32FC6847C37A684A302"
+    }
+  ],
+  "goal": "Provide a Telegram-delivered Pomodoro technique timer with classic/long/short variants, automatic phase transitions, persistent state across restarts, and quiet-hours-aware notifications.",
+  "evidence": "Built incrementally across the chat session based on iterative user requirements: timer in TG with variants (classic 25/5, long 50/10, extended 100/20 = 1h40m/20m for deep-focus, short 15/3) plus user-defined custom durations via '/pomodoro start custom <w> <b>' or '/pomodoro start <w>/<b>' shorthand (bounds 1-240 / 1-60 min), cycle-based long break every 4 cycles, slash commands (start/status/skip/stop/stats) and inline buttons, crash-safe state file, do-not-disturb filter, Telegram dialog warm-up, proactive once-per-day suggestion (hard cap 1 per local calendar day tied to plan-behind signal), automatic work-time statistics accumulation with configurable credit rule, use of the word 'помодоро' (lowercase) instead of tomato emoji, and a time-windowed scheduled-session flow (step 10) that pulls a window from the user's plan (or accepts explicit time), generates a full pomodoro sequence that fills the window exactly (trailing break included), asks the user to confirm/edit/cancel BEFORE starting, and auto-ends at the window boundary. v8 fix: schedule generation now uses block_end <= to (not < to) so the trailing break that ends exactly at the window end is included, and the (shortened) label is only shown when the actual block duration is strictly less than the variant's planned duration.",
+  "appliedAt": "2026-06-22T15:55:00.000Z"
+}
