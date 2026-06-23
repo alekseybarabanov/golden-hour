@@ -49,17 +49,19 @@ cd study-cards
 ### 1. План (`plan.json`)
 
 ```bash
-node render.js
+node render.js --source examples/plan.example.json --themes light,dark
 ```
 
-Возьмёт `plan.json` из текущей папки и создаст:
+> ⚠️ CLI-флаг передаётся через `=` (`--source=plan.json`) — парсер в `lib/cli.js` поддерживает оба формата. В standalone-ветке workspace `--key=value` молча ломался; здесь используется `parseArgs` с поддержкой `=`.
+
+Создаст:
 - `cover_light.png`, `cover_dark.png`
 - `week1_light.png`, `week1_dark.png`, …
 
 ### 2. Статистика (`tasks.yaml`)
 
 ```bash
-node render-stats.js
+node render-stats.js --source examples/tasks.example.yaml
 # или с другим источником:
 node render-stats.js --source=path/to/tasks.yaml
 ```
@@ -72,9 +74,30 @@ node render-stats.js --source=path/to/tasks.yaml
 ### 3. Только обложка
 
 ```bash
-# переименуйте plan.json или отредактируйте render.js
-# (или просто удалите weeks)
+node render.js --source plan.json --no-weeks
 ```
+
+### 4. Pre-flight guard (`check-prompt.js`)
+
+AI image-gen ломает кириллицу в body таблиц (заголовок ещё кое-как, мелкий текст — обрывки). Перед каждым `image_generate` прогоняйте проверку:
+
+```bash
+# На prompt
+node check-prompt.js --tool image_generate --prompt "План олимпиад — Алена"
+
+# На готовый JSON (рекурсивно по всем строковым полям)
+node check-prompt.js --tool image_generate --source examples/plan.example.json
+
+# Strict: exit 1 при варнинге (для CI / pre-commit)
+node check-prompt.js --tool image_generate --source examples/plan.example.json --strict
+
+# JSON-вывод для автоматизации
+node check-prompt.js --tool image_generate --source examples/plan.example.json --json
+```
+
+Распознаёт: **кириллицу, арабицу, CJK, иврит, тайский, деванагари, emoji**. Exit: `0` ok · `1` strict-warn · `2` usage error.
+
+**Правило:** если есть не-ASCII и это не декоративный overlay → идите через `render.js` (HTML+Edge). Кириллица рисуется браузером, не моделью.
 
 ---
 
@@ -162,12 +185,8 @@ meta:
 ## Примеры
 
 ```bash
-# Сгенерировать примеры
-cp examples/plan.example.json plan.json
-node render.js
-
-cp examples/tasks.example.yaml tasks.yaml
-node render-stats.js
+npm run examples:plan
+npm run examples:stats
 ```
 
 См. `examples/cover_dark.png` для предпросмотра.
@@ -177,17 +196,32 @@ node render-stats.js
 ## Использование в агенте (OpenClaw)
 
 ```bash
-# Из плана (от daily-plan)
-node render.js --mode=from-plan-file --source=plan.json
+# Из плана (от daily-plan) — через оркестратор study-plan-cards
+node ../study-plan-cards/scripts/render.js --mode=from-plan-file --source=plan.json
 
 # Из трекера (от task-tracker)
 node render-stats.js --source=state/tasks.yaml
+
+# Pre-flight guard перед image_generate
+node check-prompt.js --tool image_generate --source examples/plan.example.json --strict
 
 # В Telegram альбомом
 openclaw message send --target=<chat> --attachments="cover_dark.png,week1_dark.png,..."
 ```
 
 ---
+
+## Структура
+
+```
+skills/study-cards/
+├── render.js
+├── render-stats.js
+├── check-prompt.js             # pre-flight guard для image_generate
+├── lib/cli.js
+├── examples/
+└── README.md
+```
 
 ## Особенности реализации
 
@@ -201,7 +235,7 @@ openclaw message send --target=<chat> --attachments="cover_dark.png,week1_dark.p
 
 ## Lessons learned
 
-- AI image-gen ломает кириллицу → для русского текста использовать HTML+Edge headless
+- AI image-gen ломает кириллицу → для русского текста использовать HTML+Edge headless. **Защита:** `check-prompt.js` — pre-flight guard, ловит не-ASCII в prompt/JSON перед `image_generate`
 - Edge headless требует **уникальный `--user-data-dir`** на каждый вызов
 - Telegram принимает альбомы до 10 фото одним сообщением
 

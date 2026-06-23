@@ -25,6 +25,7 @@
   "supportFiles": [
     { "path": "render.js" },
     { "path": "render-stats.js" },
+    { "path": "check-prompt.js" },
     { "path": "README.md" },
     { "path": "LICENSE" },
     { "path": "examples/plan.example.json" },

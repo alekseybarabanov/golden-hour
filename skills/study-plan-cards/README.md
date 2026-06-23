@@ -65,5 +65,5 @@ node scripts/render.js \
 
 ## См. также
 
-- [`../study-cards/`](../study-cards/) — render engine
+- [`../study-cards/`](../study-cards/) — render engine + `check-prompt.js` (pre-flight guard)
 - [`SKILL.md`](SKILL.md) — полная документация для агента

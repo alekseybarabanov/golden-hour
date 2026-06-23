@@ -7,10 +7,11 @@
     "study-cards": "./render.js"
   },
   "scripts": {
-    "plan": "node render.js",
-    "stats": "node render-stats.js",
-    "examples:plan": "cp examples/plan.example.json plan.json && node render.js",
-    "examples:stats": "cp examples/tasks.example.yaml tasks.yaml && node render-stats.js"
+    "plan": "node render.js --source examples/plan.example.json",
+    "stats": "node render-stats.js --source examples/tasks.example.yaml",
+    "examples:plan": "node render.js --source examples/plan.example.json",
+    "examples:stats": "node render-stats.js --source examples/tasks.example.yaml",
+    "check-prompt": "node check-prompt.js"
   },
   "keywords": [
     "education",
