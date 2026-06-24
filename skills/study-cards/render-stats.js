@@ -1,4 +1,4 @@
-// render-stats.js — рендерит карточки статистики из state/tasks.yaml
+// render-stats.js — рендерит карточки статистики из users/<key>/tasks.yaml
 // Использование: node render-stats.js [--source=PATH] [--output-dir=.] [--themes=light,dark]
 // Зависимости: Node.js + Edge headless
 const fs = require('fs');

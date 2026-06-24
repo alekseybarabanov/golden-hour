@@ -12,11 +12,14 @@ export function parseDateOnly(s) {
   return new Date(Date.UTC(y, mo, d));
 }
 
+/** Calendar date in Europe/Moscow (+03:00). */
 export function todayISO(ref = new Date()) {
-  const y = ref.getUTCFullYear();
-  const m = String(ref.getUTCMonth() + 1).padStart(2, "0");
-  const d = String(ref.getUTCDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Moscow",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(ref);
 }
 
 export function daysBetween(from, to) {

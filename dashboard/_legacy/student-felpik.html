@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#06080e">
+<title>Золотой час — Фельпик</title>
+<style>
+  :root, [data-theme="dark"] {
+    --bg: #06080e; --bg-2: #0d1117; --bg-3: #151b24; --line: #1a1f2e; --line-2: #2d3648;
+    --fg: #e6edf3; --fg-2: #8b949e; --fg-3: #6b7384;
+    --accent: #7c5cfc; --accent-2: #a78bfa; --ok: #2dd4a0; --warn: #f5a623; --err: #f85149;
+    --pill: #1c2333; --glow: rgba(124,92,252,0.12);
+    --top-bg: linear-gradient(180deg, #131923 0%, #0f141d 100%);
+    --tab-hover: rgba(106,169,255,0.05); --sidebar-bg: var(--bg-2);
+    --kb-card-bg: var(--bg-3); --shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 8px 24px rgba(0,0,0,0.35);
+    --sans: -apple-system, "Segoe UI", system-ui, Roboto, sans-serif;
+    --mono: ui-monospace, Consolas, monospace;
+    --safe-b: env(safe-area-inset-bottom, 0px);
+  }
+  [data-theme="light"] {
+    --bg: #f0f2f5; --bg-2: #fff; --bg-3: #f8f9fb; --sidebar-bg: #fff;
+    --line: #e5e7eb; --line-2: #d1d5db; --fg: #111827; --fg-2: #374151; --fg-3: #4b5563;
+    --accent: #2563eb; --accent-2: #3b82f6; --ok: #059669; --pill: #f3f4f6;
+    --glow: rgba(37,99,235,0.08); --top-bg: #fff; --tab-hover: rgba(37,99,235,0.06);
+    --kb-card-bg: #fff; --shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 13px; line-height: 1.45; }
+  header.top {
+    position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; background: var(--top-bg); border-bottom: 1px solid var(--line);
+  }
+  header.top .brand { font-weight: 600; display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  header.top .brand .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+  header.top .meta { color: var(--fg-3); font-size: 11.5px; }
+  header.top .meta b { color: var(--fg-2); font-weight: 500; }
+  header.top .spacer { flex: 1; }
+  header.top button.theme {
+    background: var(--bg-3); color: var(--fg); border: 1px solid var(--line-2);
+    border-radius: 6px; padding: 5px 10px; cursor: pointer; font-size: 12px;
+  }
+  .app-shell { display: flex; min-height: calc(100dvh - 46px); background: var(--bg); overflow: hidden; }
+  .nav-rail {
+    width: 52px; flex-shrink: 0; background: var(--sidebar-bg); border-right: 1px solid var(--line);
+    display: flex; flex-direction: column; align-items: center; padding: 10px 6px; gap: 4px;
+  }
+  .nav-rail button {
+    width: 40px; height: 40px; border: 0; border-radius: 10px; background: transparent;
+    cursor: pointer; font-size: 18px; color: var(--fg-3);
+  }
+  .nav-rail button:hover { background: var(--tab-hover); color: var(--fg); }
+  .nav-rail button.active { background: var(--glow); color: var(--accent); box-shadow: inset 0 0 0 1px var(--line-2); }
+  .nav-rail .spacer { flex: 1; min-height: 8px; }
+  .sidebar-wrap {
+    width: 248px; flex-shrink: 0; border-right: 1px solid var(--line); background: var(--sidebar-bg);
+    display: flex; flex-direction: column; min-height: 0;
+  }
+  .side-nav { padding: 4px 12px 12px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+  .side-nav button.side-link {
+    display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px;
+    border: 0; border-radius: 8px; background: transparent; color: var(--fg-2);
+    font-size: 13px; cursor: pointer; text-align: left; font-family: inherit;
+  }
+  .side-nav button.side-link:hover { background: var(--tab-hover); color: var(--fg); }
+  .side-nav button.side-link.active { background: var(--glow); color: var(--accent); font-weight: 600; }
+  .squad-title { padding: 8px 14px 6px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-3); }
+  .squad-agent {
+    display: flex; align-items: center; gap: 10px; padding: 10px 14px; margin: 0 8px 8px;
+    border-left: 3px solid var(--accent); background: var(--glow); border-radius: 8px;
+  }
+  .squad-agent .em { font-size: 20px; }
+  .squad-agent .nm { font-weight: 600; font-size: 13px; }
+  .squad-agent .st { font-size: 11px; color: var(--fg-3); }
+  .squad-compose {
+    display: block; margin: 8px 12px; padding: 10px 12px; text-align: center;
+    background: var(--accent); color: #fff; border-radius: 10px; font-size: 13px; font-weight: 600;
+    text-decoration: none; cursor: pointer; border: 0; font-family: inherit;
+  }
+  .squad-compose:hover { filter: brightness(1.08); }
+  .sidebar-hint { padding: 12px 14px; font-size: 11px; color: var(--fg-3); line-height: 1.5; margin-top: auto; padding-bottom: calc(12px + var(--safe-b)); }
+  .app-main {
+    flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden;
+  }
+  .app-main.board-mode .view.active {
+    display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden;
+  }
+  .view { display: none; flex: 1; flex-direction: column; min-height: 0; overflow: hidden; }
+  .view.active { display: flex; }
+  .board-header {
+    flex-shrink: 0; display: flex; align-items: center; gap: 12px; padding: 12px 16px 10px;
+    background: var(--bg-2); border-bottom: 1px solid var(--line); flex-wrap: wrap;
+  }
+  .board-header h1 { margin: 0; font-size: 18px; font-weight: 700; flex: 1; min-width: 120px; }
+  .board-header .muted { color: var(--fg-3); font-size: 12px; }
+  .kanban-scroll-host { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+  .kanban-board-wrap {
+    flex: 1; min-height: 0; overflow-x: auto; overflow-y: hidden; padding: 14px 16px 6px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .kanban { display: flex; gap: 14px; align-items: stretch; min-height: 100%; min-width: fit-content; }
+  .kb-col { flex: 1 0 260px; min-height: 200px; display: flex; flex-direction: column; }
+  .kb-col h3 {
+    margin: 0 0 10px; padding: 10px 12px; border-radius: 10px; font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .kb-col h3 .col-label { flex: 1; }
+  .kb-col h3 .c {
+    background: rgba(255,255,255,0.65); padding: 2px 9px; border-radius: 999px;
+    font-size: 11px; font-weight: 700; min-width: 22px; text-align: center;
+  }
+  [data-theme="dark"] .kb-col h3 .c { background: rgba(0,0,0,0.25); }
+  .kb-cards { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 80px; }
+  .kb-card {
+    position: relative; border-radius: 10px; overflow: hidden;
+    border: 1px solid var(--line); background: var(--kb-card-bg); box-shadow: var(--shadow);
+  }
+  .kb-card .kb-stripe { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+  .kb-card .kb-inner { padding: 10px 12px 10px 14px; position: relative; }
+  .kb-card .kb-top { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 11px; color: var(--fg-3); }
+  .kb-card .kb-id { font-family: var(--mono); font-weight: 600; color: var(--fg-2); }
+  .kb-card .title { font-size: 13px; font-weight: 500; }
+  .kb-card .kb-foot { margin-top: 8px; font-size: 11px; color: var(--fg-3); }
+  .kb-empty { color: var(--fg-3); font-style: italic; font-size: 12px; padding: 8px 4px; }
+  .kb-col[data-col="todo"] h3 { background: #dbeafe; color: #1e40af; }
+  .kb-col[data-col="todo"] .kb-stripe { background: #3b82f6; }
+  .kb-col[data-col="progress"] h3 { background: #fef9c3; color: #854d0e; }
+  .kb-col[data-col="progress"] .kb-stripe { background: #eab308; }
+  .kb-col[data-col="done"] h3 { background: #d1fae5; color: #065f46; }
+  .kb-col[data-col="done"] .kb-stripe { background: #10b981; }
+  [data-theme="dark"] .kb-col[data-col="todo"] h3 { background: #1e3a5f; color: #bfdbfe; }
+  [data-theme="dark"] .kb-col[data-col="progress"] h3 { background: #422006; color: #fef08a; }
+  [data-theme="dark"] .kb-col[data-col="done"] h3 { background: #064e3b; color: #a7f3d0; }
+  .cal-nav { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .cal-nav .filters-btn {
+    background: var(--bg-3); border: 1px solid var(--line-2); border-radius: 10px;
+    padding: 8px 14px; font-size: 12px; cursor: default; color: var(--accent);
+    border-color: var(--accent); background: var(--glow); font-weight: 600;
+  }
+  #cal-title { font-weight: 700; font-size: 15px; min-width: 140px; text-align: center; }
+  .cal-wrap { flex: 1; min-height: 0; padding: 14px 16px 24px; overflow: auto; }
+  .cal-week-grid {
+    display: grid; grid-template-columns: repeat(7, minmax(100px, 1fr)); gap: 10px; min-width: 700px;
+  }
+  .cal-week-day {
+    background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px;
+    padding: 10px; min-height: 180px; display: flex; flex-direction: column; gap: 8px;
+  }
+  .cal-week-day.today { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--glow); }
+  .cal-week-day-head { font-size: 11px; font-weight: 700; color: var(--fg-3); text-transform: uppercase; }
+  .cal-week-day-head b { display: block; font-size: 13px; color: var(--fg); text-transform: none; margin-top: 2px; }
+  .cal-week-card {
+    border: 1px solid var(--line); border-radius: 10px; background: var(--bg-3);
+    padding: 8px 10px 8px 12px; position: relative; font-size: 12px;
+  }
+  .cal-week-card-stripe { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: 10px 0 0 10px; background: var(--accent); }
+  .cal-week-card.done .cal-week-card-stripe { background: var(--ok); }
+  .cal-week-card .t { font-weight: 500; }
+  .cal-week-card .m { font-size: 10px; color: var(--fg-3); margin-top: 3px; }
+  .empty { color: var(--fg-3); font-style: italic; padding: 24px 8px; text-align: center; }
+  .chat-panel {
+    display: flex; flex-direction: column; flex: 1; min-height: 0;
+    margin: 12px 12px calc(12px + var(--safe-b)); border: 1px solid var(--line);
+    border-radius: 12px; background: var(--bg-2); overflow: hidden;
+  }
+  .chat-toolbar {
+    display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+    border-bottom: 1px solid var(--line); background: var(--bg-3); flex-wrap: wrap;
+  }
+  .chat-toolbar .status { margin-left: auto; font-size: 11px; color: var(--fg-3); display: flex; align-items: center; gap: 6px; }
+  .chat-toolbar .status .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+  .chat-messages { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .chat-bubble { max-width: 92%; padding: 10px 12px; border-radius: 12px; font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+  .chat-bubble.user { align-self: flex-end; background: rgba(124,92,252,0.18); border: 1px solid rgba(124,92,252,0.35); }
+  .chat-bubble.assistant { align-self: flex-start; background: var(--bg-3); border: 1px solid var(--line-2); }
+  .chat-composer {
+    border-top: 1px solid var(--line); padding: 10px 12px; background: var(--bg-3);
+    display: flex; gap: 8px; align-items: flex-end;
+  }
+  .chat-composer textarea {
+    flex: 1; min-height: 44px; max-height: 120px; resize: none;
+    background: var(--bg-2); color: var(--fg); border: 1px solid var(--line-2);
+    border-radius: 10px; padding: 10px 12px; font: inherit; font-size: 13px;
+  }
+  .chat-composer button {
+    background: var(--accent); color: #fff; border: 0; border-radius: 8px;
+    padding: 10px 14px; font-size: 12px; font-weight: 600; cursor: pointer; height: 44px;
+  }
+  .chat-composer button:disabled { opacity: 0.5; }
+  .err-page { padding: 32px 20px; text-align: center; color: var(--err); }
+  @media (max-width: 900px) {
+    .sidebar-wrap { width: 200px; }
+  }
+  @media (max-width: 720px) {
+    .sidebar-wrap { display: none; }
+    .board-header h1 { font-size: 15px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand"><span class="dot" id="live-dot"></span> <span id="brand-title">Фельпик</span></div>
+  <span class="meta">Привет, <b id="hdr-name">…</b></span>
+  <span class="meta" id="hdr-date">—</span>
+  <span class="spacer"></span>
+  <button type="button" class="theme" id="btn-theme" title="Тема">☀️</button>
+</header>
+
+<div class="app-shell" id="app" hidden>
+  <nav class="nav-rail" aria-label="Навигация">
+    <button type="button" data-view="tasks" class="active" title="Kanban">▦</button>
+    <button type="button" data-view="calendar" title="Календарь">📅</button>
+    <button type="button" data-view="chat" title="Чат">💬</button>
+    <span class="spacer"></span>
+  </nav>
+  <aside class="sidebar-wrap">
+    <div class="side-nav">
+      <button type="button" class="side-link active" data-goto="tasks">▦ Kanban Board</button>
+      <button type="button" class="side-link" data-goto="calendar">📅 Calendar</button>
+    </div>
+    <div class="squad-title">Squad</div>
+    <div class="squad-agent">
+      <span class="em" id="side-emoji">🌅</span>
+      <div>
+        <div class="nm" id="side-agent">Золотой час</div>
+        <div class="st">личный кабинет</div>
+      </div>
+    </div>
+    <button type="button" class="squad-compose" id="btn-goto-chat">💬 Чат с агентом</button>
+    <div class="sidebar-hint">План и чат синхронизированы с Telegram-ботом. Редактирование — через бота.</div>
+  </aside>
+  <div class="app-main board-mode">
+    <div class="view active" id="view-tasks">
+      <div class="board-header">
+        <h1>Kanban Board</h1>
+        <span class="muted" id="kanban-meta">—</span>
+      </div>
+      <div class="kanban-scroll-host">
+        <div class="kanban-board-wrap">
+          <div class="kanban" id="kanban-board"></div>
+        </div>
+      </div>
+    </div>
+    <div class="view" id="view-calendar">
+      <div class="board-header">
+        <h1>Calendar</h1>
+        <div class="cal-nav">
+          <span id="cal-title">—</span>
+          <span class="filters-btn">Week</span>
+        </div>
+        <span class="muted" id="cal-meta">—</span>
+      </div>
+      <div class="cal-wrap">
+        <div class="cal-week-grid" id="cal-board"></div>
+      </div>
+    </div>
+    <div class="view" id="view-chat">
+      <div class="chat-panel">
+        <div class="chat-toolbar">
+          <span class="meta">💬 Чат с <b id="chat-agent-name">Золотым часом</b></span>
+          <span class="status"><span class="dot"></span><span id="chat-status">online</span></span>
+        </div>
+        <div class="chat-messages" id="chat-messages"><div class="empty">Загрузка истории…</div></div>
+        <form class="chat-composer" id="chat-form">
+          <textarea id="chat-input" rows="1" placeholder="Сообщение…" autocomplete="off"></textarea>
+          <button type="submit" id="chat-send">→</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="err-host" class="err-page" hidden></div>
+
+<script>
+(function () {
+  const TOKEN = (function () {
+    const m = location.pathname.match(/^\/my\/([^/?#]+)/);
+    if (m) return decodeURIComponent(m[1]);
+    return new URLSearchParams(location.search).get('token') || '';
+  })();
+
+  const KANBAN_COLS = [
+    { id: 'todo', label: 'Queue', icon: '📋', match: s => /^(queued|pending|new|todo|planned)$/.test(s) },
+    { id: 'progress', label: 'In Progress', icon: '⚡', match: s => /^(running|in[-_ ]?progress|active|working)$/.test(s) },
+    { id: 'done', label: 'Done', icon: '✓', match: s => /^(done|completed|ok|success)$/.test(s) },
+  ];
+  const CAL_DOW = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+
+  const $ = (s) => document.querySelector(s);
+  const state = { bootstrap: null, sending: false, poll: null };
+
+  function esc(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function api(path, opts) {
+    const sep = path.includes('?') ? '&' : '?';
+    return fetch(path + sep + 'token=' + encodeURIComponent(TOKEN), opts).then((r) => r.json());
+  }
+
+  function fmtTime(iso) {
+    if (!iso) return '—';
+    try {
+      return new Date(iso).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    } catch { return '—'; }
+  }
+
+  function fmtDate(iso) {
+    try {
+      return new Date(iso + 'T12:00:00').toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'long' });
+    } catch { return iso; }
+  }
+
+  function colForStatus(status) {
+    const s = String(status || 'planned').toLowerCase();
+    for (const c of KANBAN_COLS) if (c.match(s)) return c.id;
+    return 'todo';
+  }
+
+  function taskDisplayId(id) {
+    const s = String(id || '');
+    return s.length > 8 ? s.slice(-6) : s;
+  }
+
+  function renderKanban(plan) {
+    const tasks = plan?.tasks || [];
+    const byCol = Object.fromEntries(KANBAN_COLS.map((c) => [c.id, []]));
+    for (const t of tasks) {
+      const col = colForStatus(t.status);
+      (byCol[col] || byCol.todo).push(t);
+    }
+    $('#kanban-meta').textContent = tasks.length + ' tasks';
+    $('#kanban-board').innerHTML = KANBAN_COLS.map((col) => {
+      const cards = byCol[col.id];
+      const body = cards.length ? cards.map((t) => {
+        const done = col.id === 'done';
+        return `<div class="kb-card">
+          <div class="kb-stripe"></div>
+          <div class="kb-inner">
+            <div class="kb-top"><span class="kb-id">#${esc(taskDisplayId(t.id))}</span><span>${esc(fmtTime(t.scheduled_at))}</span></div>
+            <div class="title">${esc(t.title)}</div>
+            <div class="kb-foot">${t.est_minutes ? esc(t.est_minutes) + ' мин' : ''}</div>
+          </div>
+        </div>`;
+      }).join('') : '<div class="kb-empty">пусто</div>';
+      return `<div class="kb-col" data-col="${col.id}">
+        <h3><span class="col-icon">${col.icon}</span><span class="col-label">${esc(col.label)}</span><span class="c">${cards.length}</span></h3>
+        <div class="kb-cards">${body}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function mondayOf(d) {
+    const x = new Date(d);
+    const day = (x.getDay() + 6) % 7;
+    x.setDate(x.getDate() - day);
+    x.setHours(12, 0, 0, 0);
+    return x;
+  }
+
+  function dateKey(d) {
+    return d.toISOString().slice(0, 10);
+  }
+
+  function renderCalendar(plan, todayKey) {
+    const tasks = plan?.tasks || [];
+    const today = new Date(todayKey + 'T12:00:00');
+    const weekStart = mondayOf(today);
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(weekStart);
+      d.setDate(weekStart.getDate() + i);
+      days.push(d);
+    }
+    const end = days[6];
+    $('#cal-title').textContent = weekStart.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+      + ' — ' + end.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' });
+    $('#cal-meta').textContent = tasks.length + ' на сегодня';
+    $('#cal-board').innerHTML = days.map((d, i) => {
+      const dk = dateKey(d);
+      const isToday = dk === todayKey;
+      const dayTasks = isToday ? [...tasks].sort((a, b) => (a.scheduled_at || '').localeCompare(b.scheduled_at || '')) : [];
+      const cards = dayTasks.length ? dayTasks.map((t) => {
+        const done = colForStatus(t.status) === 'done';
+        return `<div class="cal-week-card${done ? ' done' : ''}">
+          <div class="cal-week-card-stripe"></div>
+          <div class="t">${esc(t.title)}</div>
+          <div class="m">${esc(fmtTime(t.scheduled_at))}${t.est_minutes ? ' · ' + t.est_minutes + ' мин' : ''}</div>
+        </div>`;
+      }).join('') : (isToday ? '<div class="empty" style="padding:12px 4px;font-size:11px">нет задач</div>' : '');
+      return `<div class="cal-week-day${isToday ? ' today' : ''}">
+        <div class="cal-week-day-head">${CAL_DOW[i]}<b>${d.getDate()}</b></div>
+        ${cards}
+      </div>`;
+    }).join('');
+  }
+
+  function renderChat(msgs) {
+    const host = $('#chat-messages');
+    if (!msgs?.length) {
+      host.innerHTML = '<div class="empty">Напишите первое сообщение</div>';
+      return;
+    }
+    host.innerHTML = msgs.filter((m) => m.text?.trim()).map((m) => {
+      const role = /user|human/i.test(m.role) ? 'user' : 'assistant';
+      return '<div class="chat-bubble ' + role + '">' + esc(m.text) + '</div>';
+    }).join('');
+    host.scrollTop = host.scrollHeight;
+  }
+
+  function loadChat() {
+    return api('/api/chat/history?limit=80').then((data) => {
+      if (data.ok) renderChat(data.messages);
+      else $('#chat-status').textContent = data.error || 'ошибка';
+    });
+  }
+
+  function gotoView(name) {
+    document.querySelectorAll('.nav-rail button[data-view]').forEach((b) => {
+      b.classList.toggle('active', b.dataset.view === name);
+    });
+    document.querySelectorAll('.side-link').forEach((b) => {
+      b.classList.toggle('active', b.dataset.goto === name);
+    });
+    document.querySelectorAll('.view').forEach((v) => v.classList.remove('active'));
+    $('#view-' + name).classList.add('active');
+    if (name === 'chat') loadChat();
+  }
+
+  function applyBootstrap(data) {
+    state.bootstrap = data;
+    $('#hdr-name').textContent = data.name || 'Ученик';
+    $('#hdr-date').textContent = fmtDate(data.date);
+    $('#side-agent').textContent = data.agent_name || 'Золотой час';
+    $('#chat-agent-name').textContent = data.agent_name || 'Золотым часом';
+    if (data.agent_emoji) {
+      $('#side-emoji').textContent = data.agent_emoji;
+      $('#brand-title').textContent = (data.agent_emoji + ' Фельпик').trim();
+    }
+    renderKanban(data.plan);
+    renderCalendar(data.plan, data.date);
+    $('#app').hidden = false;
+  }
+
+  document.querySelectorAll('.nav-rail button[data-view]').forEach((btn) => {
+    btn.addEventListener('click', () => gotoView(btn.dataset.view));
+  });
+  document.querySelectorAll('.side-link').forEach((btn) => {
+    btn.addEventListener('click', () => gotoView(btn.dataset.goto));
+  });
+  $('#btn-goto-chat').addEventListener('click', () => gotoView('chat'));
+
+  $('#btn-theme').addEventListener('click', () => {
+    const html = document.documentElement;
+    const next = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    html.setAttribute('data-theme', next);
+    localStorage.setItem('gh-felpik-theme', next);
+    $('#btn-theme').textContent = next === 'light' ? '🌙' : '☀️';
+  });
+  const savedTheme = localStorage.getItem('gh-felpik-theme');
+  if (savedTheme) {
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    $('#btn-theme').textContent = savedTheme === 'light' ? '🌙' : '☀️';
+  }
+
+  $('#chat-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const ta = $('#chat-input');
+    const text = ta.value.trim();
+    if (!text || state.sending) return;
+    state.sending = true;
+    $('#chat-send').disabled = true;
+    $('#chat-status').textContent = 'отправка…';
+    fetch('/api/chat/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: TOKEN, message: text }),
+    }).then((r) => r.json()).then((data) => {
+      if (data.ok) {
+        ta.value = '';
+        loadChat();
+        if (data.reply) {
+          const host = $('#chat-messages');
+          const div = document.createElement('div');
+          div.className = 'chat-bubble assistant';
+          div.textContent = data.reply;
+          host.appendChild(div);
+          host.scrollTop = host.scrollHeight;
+        }
+      } else {
+        $('#chat-status').textContent = data.error || 'ошибка';
+      }
+    }).finally(() => {
+      state.sending = false;
+      $('#chat-send').disabled = false;
+      $('#chat-status').textContent = 'online';
+    });
+  });
+
+  if (!TOKEN) {
+    $('#err-host').hidden = false;
+    $('#err-host').textContent = 'Нет ссылки. Попроси бота: /web';
+    return;
+  }
+
+  api('/api/bootstrap').then((data) => {
+    if (!data.ok) {
+      $('#err-host').hidden = false;
+      $('#err-host').textContent = 'Ссылка недействительна. Напиши /web в боте.';
+      return;
+    }
+    applyBootstrap(data);
+    state.poll = setInterval(() => {
+      if (document.querySelector('#view-chat.active')) loadChat();
+    }, 5000);
+  }).catch(() => {
+    $('#err-host').hidden = false;
+    $('#err-host').textContent = 'Нет связи с сервером.';
+  });
+})();
+</script>
+</body>
+</html>

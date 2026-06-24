@@ -10,8 +10,8 @@ script: "scripts/temporal-kg.mjs"
 **Use when:** нужно понять не «что я знаю по физике», а «когда я последний раз трогал тему X, что предшествовало, что было после, какие были ошибки в этот период». Линейный `progress.md` для этого не подходит.
 
 **Don't use when:**
-- Нужен простой список задач → `task-tracker`
-- Нужен дневник чек-инов → `daily-study-checkin`
+- Нужен простой список задач → `tasks`
+- Нужен дневник чек-инов → `checkins`
 - Нужен отчёт «что изучил за неделю» → `progress.md` (и так сойдёт)
 
 ## Назначение
@@ -76,10 +76,10 @@ script: "scripts/temporal-kg.mjs"
 
 ### 1. Запись события
 Любой скилл может **emit** событие в temporal-kg:
-- `task-triage` после выполнения подзадачи → `solve(problem_id, result, error_type)`
-- `daily-study-checkin` → `checkin(date, mood, energy, topics)`
+- `tasks` после выполнения подзадачи → `solve(problem_id, result, error_type)`
+- `checkins` → `checkin(date, mood, energy, topics)`
 - `study-plan` при достижении milestone → `milestone(topic, target, actual, status)`
-- `reflection-loop` → `reflection(linked_event, cause, adaptation)`
+- `checkins` (рефлексия) → `reflection(linked_event, cause, adaptation)`
 - `goal-planned` при drift → `drift(topic, days_late, reason)`
 
 API (исполнение — **только скрипт**, не в голове):
@@ -125,12 +125,12 @@ node scripts/temporal-kg.mjs topic --user <key> --topic "..."
 
 | Скилл | Что пишет | Что читает |
 |---|---|---|
-| `daily-study-checkin` | `checkin` события | — |
-| `task-triage` | `solve` события | — |
+| `checkins` | `checkin` события | — |
+| `tasks` | `solve` события | — |
 | `study-plan` | `milestone` события | `drift` для адаптации |
 | `goal-planned` | `drift` события | timeline цели |
 | `spaced-repetition` | — | `last_seen` для расчёта due |
-| `reflection-loop` | `reflection` события | предыдущие `drift` для паттерна |
+| `checkins` | `reflection` события | предыдущие `drift` для паттерна |
 | `adaptive-weights` | — | `drift` события для `stall_penalty` |
 | `critical-review` | — | граф для аудита «каша в стыковке» |
 
@@ -155,7 +155,7 @@ node scripts/temporal-kg.mjs topic --user <key> --topic "..."
 
 - `spaced-repetition` — потребитель `last_seen`
 - `adaptive-weights` — потребитель `drift_count`
-- `reflection-loop` — эмиттер `reflection` событий
+- `checkins` — эмиттер `reflection` событий
 - `diagram-maker` — визуализация графа
 - `critical-review` — потребитель для аудита
 
@@ -194,8 +194,8 @@ node scripts/temporal-kg.mjs topic --user <key> --topic "..."
 
 | Событие | После чего | Команда |
 |---|---|---|
-| `checkin` | `daily-study-checkin` | `checkin --mood N --topics "A,B"` |
-| `reflection` | `reflection-loop` | `reflection --topic "..." --causes "..." --adaptation "..."` |
+| `checkin` | `checkins` | `checkin --mood N --topics "A,B"` |
+| `reflection` | `checkins` | `reflection --topic "..." --causes "..." --adaptation "..."` |
 | `drift` | просрочка / срыв | `drift --topic "..." --days-late N --reason "..."` |
 | `solve` | ошибка или успех в задаче | `solve --topic "..." --problem-id p_N --result fail\|success` |
 | `milestone` | закрытие темы в плане | `milestone --topic "..." --status closed` |

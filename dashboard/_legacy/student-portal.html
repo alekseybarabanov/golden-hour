@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#1a1208">
+  <title>Золотой час</title>
+  <style>
+    :root {
+      --bg: #0f0c08;
+      --bg2: #1a1510;
+      --bg3: #252018;
+      --fg: #f5e6c8;
+      --fg2: #c9b896;
+      --fg3: #8a7a62;
+      --gold: #e8a838;
+      --gold-dim: #a67420;
+      --line: #3a3020;
+      --ok: #5cb85c;
+      --radius: 14px;
+      --safe-b: env(safe-area-inset-bottom, 0px);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+    body { display: flex; flex-direction: column; min-height: 100dvh; }
+
+    header {
+      padding: 14px 16px 10px;
+      background: linear-gradient(180deg, #2a1f10 0%, var(--bg2) 100%);
+      border-bottom: 1px solid var(--line);
+      flex-shrink: 0;
+    }
+    header h1 { margin: 0; font-size: 18px; font-weight: 700; }
+    header .sub { color: var(--fg2); font-size: 13px; margin-top: 4px; }
+    header .date { color: var(--gold); font-weight: 600; }
+
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--line);
+      background: var(--bg2);
+      flex-shrink: 0;
+    }
+    .tabs button {
+      flex: 1;
+      border: 0;
+      background: transparent;
+      color: var(--fg3);
+      padding: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .tabs button.active { color: var(--gold); box-shadow: inset 0 -2px 0 var(--gold); }
+
+    main { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+    .panel { display: none; flex: 1; overflow: auto; flex-direction: column; }
+    .panel.active { display: flex; }
+
+    /* Plan */
+    .plan-wrap { padding: 12px 14px calc(16px + var(--safe-b)); }
+    .goal-card {
+      background: var(--bg2);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      margin-bottom: 12px;
+    }
+    .goal-card h2 { margin: 0 0 8px; font-size: 14px; color: var(--gold); }
+    .task {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 10px 0;
+      border-top: 1px solid var(--line);
+    }
+    .task:first-of-type { border-top: 0; }
+    .task .dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      margin-top: 5px; flex-shrink: 0;
+      background: var(--gold-dim);
+    }
+    .task.done .dot { background: var(--ok); }
+    .task .title { font-size: 14px; line-height: 1.4; }
+    .task .meta { font-size: 11px; color: var(--fg3); margin-top: 3px; }
+    .empty {
+      text-align: center; color: var(--fg3); padding: 40px 20px; font-size: 14px; line-height: 1.6;
+    }
+
+    /* Chat */
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .bubble {
+      max-width: 88%;
+      padding: 10px 12px;
+      border-radius: 14px;
+      font-size: 14px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .bubble.user {
+      align-self: flex-end;
+      background: #3d2e14;
+      border: 1px solid var(--gold-dim);
+      color: var(--fg);
+    }
+    .bubble.assistant {
+      align-self: flex-start;
+      background: var(--bg3);
+      border: 1px solid var(--line);
+    }
+    .bubble.system { align-self: center; color: var(--fg3); font-size: 12px; background: transparent; }
+    .chat-input {
+      display: flex;
+      gap: 8px;
+      padding: 10px 12px calc(10px + var(--safe-b));
+      border-top: 1px solid var(--line);
+      background: var(--bg2);
+      flex-shrink: 0;
+    }
+    .chat-input textarea {
+      flex: 1;
+      resize: none;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--bg);
+      color: var(--fg);
+      padding: 10px 12px;
+      font: inherit;
+      font-size: 15px;
+      min-height: 44px;
+      max-height: 120px;
+    }
+    .chat-input button {
+      border: 0;
+      border-radius: 12px;
+      background: var(--gold);
+      color: #1a1000;
+      font-weight: 700;
+      padding: 0 16px;
+      font-size: 14px;
+      cursor: pointer;
+      align-self: flex-end;
+      height: 44px;
+    }
+    .chat-input button:disabled { opacity: 0.5; cursor: default; }
+
+    .loading, .error-banner {
+      padding: 12px 16px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--fg2);
+    }
+    .error-banner { color: #f08080; background: #2a1010; }
+    .status { font-size: 11px; color: var(--fg3); text-align: center; padding: 4px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1 id="hdr-title">🌅 Золотой час</h1>
+    <div class="sub">Привет, <span id="hdr-name">…</span> · <span class="date" id="hdr-date">…</span></div>
+  </header>
+
+  <div class="tabs">
+    <button type="button" class="active" data-tab="plan">📋 План дня</button>
+    <button type="button" data-tab="chat">💬 Чат</button>
+  </div>
+
+  <main>
+    <div class="panel active" id="panel-plan">
+      <div id="plan-loading" class="loading">Загружаем план…</div>
+      <div class="plan-wrap" id="plan-content" hidden></div>
+    </div>
+
+    <div class="panel" id="panel-chat">
+      <div class="chat-messages" id="chat-messages"></div>
+      <div class="status" id="chat-status"></div>
+      <form class="chat-input" id="chat-form">
+        <textarea id="chat-text" rows="1" placeholder="Напиши Золотому часу…" autocomplete="off"></textarea>
+        <button type="submit" id="chat-send">→</button>
+      </form>
+    </div>
+  </main>
+
+  <script>
+(function () {
+  const TOKEN = (function () {
+    const m = location.pathname.match(/^\/my\/([^/?#]+)/);
+    if (m) return decodeURIComponent(m[1]);
+    return new URLSearchParams(location.search).get("token") || "";
+  })();
+
+  if (!TOKEN) {
+    document.body.innerHTML = '<div class="error-banner">Нет ссылки. Попроси бота: /web</div>';
+    return;
+  }
+
+  const $ = (s) => document.querySelector(s);
+  const state = { bootstrap: null, polling: null, sending: false };
+
+  document.querySelectorAll(".tabs button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".tabs button").forEach((b) => b.classList.remove("active"));
+      document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
+      btn.classList.add("active");
+      $("#panel-" + btn.dataset.tab).classList.add("active");
+      if (btn.dataset.tab === "chat") loadChat(true);
+    });
+  });
+
+  function api(path, opts) {
+    const url = path + (path.includes("?") ? "&" : "?") + "token=" + encodeURIComponent(TOKEN);
+    return fetch(url, opts).then((r) => r.json());
+  }
+
+  function fmtTime(iso) {
+    if (!iso) return "";
+    try {
+      const d = new Date(iso);
+      return d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+    } catch { return ""; }
+  }
+
+  function renderPlan(plan) {
+    const wrap = $("#plan-content");
+    $("#plan-loading").hidden = true;
+    wrap.hidden = false;
+    if (!plan || !plan.tasks || !plan.tasks.length) {
+      wrap.innerHTML = '<div class="empty">Плана на сегодня пока нет.<br>Напиши в чат: «спланируй день»</div>';
+      return;
+    }
+    const goals = plan.goals || [];
+    const goalMap = Object.fromEntries(goals.map((g) => [g.id, g.title]));
+    const byGoal = {};
+    for (const t of plan.tasks) {
+      const gid = t.goal_id || "_";
+      if (!byGoal[gid]) byGoal[gid] = [];
+      byGoal[gid].push(t);
+    }
+    let html = "";
+    for (const [gid, tasks] of Object.entries(byGoal)) {
+      const title = goalMap[gid] || "Задачи";
+      html += '<div class="goal-card"><h2>' + esc(title) + '</h2>';
+      for (const t of tasks) {
+        const done = t.status === "done" || t.status === "completed";
+        html += '<div class="task' + (done ? " done" : "") + '">'
+          + '<div class="dot"></div><div><div class="title">' + esc(t.title) + '</div>'
+          + '<div class="meta">' + esc(fmtTime(t.scheduled_at)) + (t.est_minutes ? " · " + t.est_minutes + " мин" : "") + '</div></div></div>';
+      }
+      html += "</div>";
+    }
+    wrap.innerHTML = html;
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  function renderMessages(msgs) {
+    const box = $("#chat-messages");
+    box.innerHTML = "";
+    for (const m of msgs) {
+      if (!m.text || !m.text.trim()) continue;
+      const role = (m.role || "").toLowerCase();
+      const cls = role.includes("user") || role === "human" ? "user"
+        : role.includes("assistant") || role === "model" ? "assistant" : "system";
+      const div = document.createElement("div");
+      div.className = "bubble " + cls;
+      div.textContent = m.text;
+      box.appendChild(div);
+    }
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function loadChat(scroll) {
+    api("/api/chat/history?limit=80").then((data) => {
+      if (!data.ok) {
+        $("#chat-status").textContent = data.error || "Ошибка чата";
+        return;
+      }
+      renderMessages(data.messages || []);
+      if (scroll) $("#chat-messages").scrollTop = $("#chat-messages").scrollHeight;
+    }).catch(() => {
+      $("#chat-status").textContent = "Нет связи с сервером";
+    });
+  }
+
+  function startChatPolling() {
+    if (state.polling) return;
+    state.polling = setInterval(() => loadChat(false), 4000);
+  }
+
+  $("#chat-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const ta = $("#chat-text");
+    const text = ta.value.trim();
+    if (!text || state.sending) return;
+    state.sending = true;
+    $("#chat-send").disabled = true;
+    $("#chat-status").textContent = "Отправляем…";
+    fetch("/api/chat/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: TOKEN, message: text }),
+    }).then((r) => r.json()).then((data) => {
+      if (data.ok) {
+        ta.value = "";
+        $("#chat-status").textContent = "";
+        loadChat(true);
+        if (data.reply) {
+          const box = $("#chat-messages");
+          const div = document.createElement("div");
+          div.className = "bubble assistant";
+          div.textContent = data.reply;
+          box.appendChild(div);
+          box.scrollTop = box.scrollHeight;
+        }
+      } else {
+        $("#chat-status").textContent = data.error || "Не отправилось";
+      }
+    }).catch(() => {
+      $("#chat-status").textContent = "Ошибка сети";
+    }).finally(() => {
+      state.sending = false;
+      $("#chat-send").disabled = false;
+    });
+  });
+
+  api("/api/bootstrap").then((data) => {
+    if (!data.ok) {
+      document.body.innerHTML = '<div class="error-banner">Ссылка недействительна. Напиши боту /web</div>';
+      return;
+    }
+    state.bootstrap = data;
+    $("#hdr-name").textContent = data.name || "Ученик";
+    $("#hdr-date").textContent = data.date || "";
+    renderPlan(data.plan);
+    startChatPolling();
+  }).catch(() => {
+    $("#plan-loading").textContent = "Не удалось подключиться. Проверь Wi‑Fi.";
+  });
+})();
+  </script>
+</body>
+</html>

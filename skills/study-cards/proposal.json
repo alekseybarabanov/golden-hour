@@ -31,6 +31,6 @@
     { "path": "examples/plan.example.json" },
     { "path": "examples/tasks.example.yaml" }
   ],
-  "goal": "Визуальный слой для study-plan и task-tracker: PNG-карточки для Telegram.",
+  "goal": "Визуальный слой для study-plan и tasks: PNG-карточки для Telegram.",
   "appliedAt": "2026-06-22T12:00:00.000Z"
 }

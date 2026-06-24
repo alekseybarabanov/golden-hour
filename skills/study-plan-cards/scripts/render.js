@@ -2,7 +2,7 @@
 // Orchestrator: study-plan-cards → delegates rendering to study-cards engine.
 // Usage:
 //   node render.js --mode=from-plan-file [--source=cards/plan.json] [--output-dir=cards/] [--themes=light,dark]
-//   node render.js --mode=from-state [--source=state/tasks.yaml] [--output-dir=cards/]
+//   node render.js --mode=from-state [--source=users/<key>/tasks.yaml] [--output-dir=cards/]
 //   node render.js --mode=from-topics [--source=cards/plan.json]   # CardPlan built by agent
 //   node render.js --mode=full [--plan-source=...] [--stats-source=...] [--output-dir=cards/]
 const path = require('path');

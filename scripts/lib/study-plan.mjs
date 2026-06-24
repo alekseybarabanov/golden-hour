@@ -33,15 +33,30 @@ export function allocateHours(topics, totalHours, profile, today) {
   return { topics: allocated, finalBlock, totalHours };
 }
 
-export function assignWeeks(topics, totalWeeks, hoursPerWeek) {
+function formatWeekRange(start, end) {
+  if (start > end) return String(end);
+  return start === end ? `${start}` : `${start}–${end}`;
+}
+
+/** Reserve trailing weeks for the final block so fStart never exceeds fEnd. */
+export function assignWeeks(topics, totalWeeks, hoursPerWeek, finalHours = 0) {
+  const finalWeeks =
+    finalHours > 0
+      ? Math.min(totalWeeks, Math.max(1, Math.ceil(finalHours / hoursPerWeek)))
+      : 1;
+  const topicWeekCap = Math.max(1, totalWeeks - finalWeeks);
   let week = 1;
   const rows = [];
 
   for (const t of topics) {
     const w = Math.max(1, Math.ceil(t.hours / hoursPerWeek));
-    const start = week;
-    const end = Math.min(totalWeeks, week + w - 1);
-    week = end + 1;
+    let start = Math.min(week, topicWeekCap);
+    let end = Math.min(topicWeekCap, week + w - 1);
+    if (start > end) {
+      start = topicWeekCap;
+      end = topicWeekCap;
+    }
+    week = Math.min(topicWeekCap + 1, end + 1);
     rows.push({
       ...t,
       weeks: { start, end },
@@ -49,7 +64,12 @@ export function assignWeeks(topics, totalWeeks, hoursPerWeek) {
     });
   }
 
-  return rows;
+  const fStart = topicWeekCap + 1;
+  const fEnd = totalWeeks;
+  return {
+    rows,
+    finalWeeks: { start: Math.min(fStart, fEnd), end: fEnd },
+  };
 }
 
 export function renderPlanMarkdown(profile, rows, finalBlock, meta) {
@@ -103,35 +123,30 @@ export function renderPlanMarkdown(profile, rows, finalBlock, meta) {
   lines.push("| # | Тема | Уровень | Часов | Недели | Сложность |");
   lines.push("|---|---|---|---|---|---|");
 
+  const finalWeeks = meta.finalWeeks || { start: 1, end: totalWeeks };
+
   rows.forEach((r, i) => {
-    const w =
-      r.weeks.start === r.weeks.end
-        ? `${r.weeks.start}`
-        : `${r.weeks.start}–${r.weeks.end}`;
+    const w = formatWeekRange(r.weeks.start, r.weeks.end);
     lines.push(
       `| ${i + 1} | ${r.title} | ${r.level} | ${r.hours} | ${w} | ${r.difficulty} |`
     );
   });
-  const fStart = rows.length ? rows[rows.length - 1].weeks.end + 1 : 1;
-  const fEnd = totalWeeks;
+  const fRange = formatWeekRange(finalWeeks.start, finalWeeks.end);
   lines.push(
-    `| ${rows.length + 1} | **${finalBlock.title}** | — | ${finalBlock.hours} | ${fStart}–${fEnd} | микс |`
+    `| ${rows.length + 1} | **${finalBlock.title}** | — | ${finalBlock.hours} | ${fRange} | микс |`
   );
 
   lines.push("");
   lines.push("## Понедельный скелет");
   lines.push("");
   for (const r of rows) {
-  const w =
-      r.weeks.start === r.weeks.end
-        ? `${r.weeks.start}`
-        : `${r.weeks.start}–${r.weeks.end}`;
+    const w = formatWeekRange(r.weeks.start, r.weeks.end);
     lines.push(
       `${r.weeks.start}. **Нед. ${w}** — **${r.title}**: теория → практика → закрепление`
     );
   }
   lines.push(
-    `${fStart}. **Нед. ${fStart}–${fEnd}** — **${finalBlock.title}**: пробные варианты + разбор ошибок`
+    `${finalWeeks.start}. **Нед. ${fRange}** — **${finalBlock.title}**: пробные варианты + разбор ошибок`
   );
 
   lines.push("");
@@ -148,8 +163,13 @@ export function renderPlanMarkdown(profile, rows, finalBlock, meta) {
   return lines.join("\n") + "\n";
 }
 
-export function buildStudyPlan(profile, today = todayISO()) {
-  const topics = getTopicsFromProfile(profile);
+export function buildStudyPlan(profile, today = todayISO(), { purpose } = {}) {
+  const effectivePurpose = purpose || profile.purpose;
+  const effectiveProfile = { ...profile, purpose: effectivePurpose };
+  if (effectivePurpose === "olympiad" && profile.olympiad_hours_per_week) {
+    effectiveProfile.hours_per_week = profile.olympiad_hours_per_week;
+  }
+  const topics = getTopicsFromProfile(effectiveProfile, effectivePurpose);
   if (!topics.length) {
     return { error: "no topics in profile" };
   }
@@ -162,26 +182,28 @@ export function buildStudyPlan(profile, today = todayISO()) {
   }
   totalWeeks = Math.max(1, totalWeeks);
 
-  const hpw = Number(profile.hours_per_week) || 7;
+  const hpw = Number(effectiveProfile.hours_per_week) || 7;
   const totalHours = Math.round(hpw * totalWeeks);
 
   const { topics: allocated, finalBlock } = allocateHours(
     topics,
     totalHours,
-    profile,
+    effectiveProfile,
     today
   );
-  const rows = assignWeeks(allocated, totalWeeks, hpw);
+  const { rows, finalWeeks } = assignWeeks(allocated, totalWeeks, hpw, finalBlock.hours);
 
-  const markdown = renderPlanMarkdown(profile, rows, finalBlock, {
+  const markdown = renderPlanMarkdown(effectiveProfile, rows, finalBlock, {
     totalHours,
     totalWeeks,
     today,
+    finalWeeks,
   });
 
   return {
     markdown,
-    meta: { totalHours, totalWeeks, topicCount: rows.length },
+    meta: { totalHours, totalWeeks, topicCount: rows.length, finalWeeks },
     rows,
+    finalWeeks,
   };
 }

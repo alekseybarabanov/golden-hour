@@ -1,85 +1,67 @@
 ---
 name: "daily-plan"
-description: "Генерирует users/<user_key>/plans/YYYY-MM-DD.json из профиля и макро-плана пользователя. Без дневного плана goal-checkin-notifier молчит. Требует setup_status=complete."
+description: "Генерирует users/<user_key>/plans/YYYY-MM-DD.json из профиля и макро-плана. Без дневного плана checkins молчит. Включает spaced repetition. Требует setup_status=complete."
 ---
 
 # daily-plan
 
 ## Цель
-Сгенерировать план на сегодня из профиля и макро-плана пользователя. Файл `users/<user_key>/plans/YYYY-MM-DD.json` нужен `goal-checkin-notifier`, чтобы тот слал morning brief, task pings и evening check-in.
+Сгенерировать план на сегодня из профиля и макро-плана. Файл `plans/YYYY-MM-DD.json` нужен скиллу **`checkins`** (бриф, пинги, чек-ин).
 
 ## Триггер
-- **Авто:** после завершения цепочки onboarding (имя → purpose → ветка → самооценка)
+- **Авто:** `session-start` предлагает dry-run, если нет `plans/<сегодня>.json`; cron `morning-plan.mjs` в 07:00 (без подтверждения)
 - **Вручную:** «спланируй день» / «создай план» / «обнови план»
 
-## Логика
-1. Прочитать `users/<user_key>/profile.md` (цель, уровни, `hours_per_week`, `deadline`) и `users/<user_key>/plan.md` (текущая неделя макро-плана). **Требует `setup_status: complete`** — иначе вести в настройку.
-2. Сгенерировать структуру:
-   - Для каждого subject создать `goal` с `weight` (1-5)
-   - Создать 2-4 задачи на сегодня (по `daily_hours / 7` ≈ часов в день)
-   - Распределить по времени: morning (10:00), afternoon (14:00), evening (18:00)
-3. Сохранить в `users/<user_key>/plans/YYYY-MM-DD.json` (UTF-8, pretty JSON)
-4. Подтвердить: `План на сегодня создан: N целей, M задач, ~H ч.`
+## Исполнение (только скрипт)
+
+```bash
+node scripts/daily-plan.mjs --user <user_key> --date <YYYY-MM-DD> --dry-run
+node scripts/daily-plan.mjs --user <user_key> --date <YYYY-MM-DD>
+```
+
+Движок: `scripts/lib/daily-plan-engine.mjs` → `task-weighting` + `daily-balancer` + `spaced-repetition` + recurring.
+
+1. Прочитать `profile.md` и `plan.md`. **Требует `setup_status: complete`.**
+2. Собрать кандидаты, сбалансировать день (`D_max` из `daily_load`).
+3. Записать `plans/YYYY-MM-DD.json`.
+4. Показать пользователю `summary` из JSON — **не пересчитывать вручную**.
 
 ## Структура плана
 
 ```json
 {
   "date": "YYYY-MM-DD",
-  "user_id": "u_local",
-  "goals": [
-    {
-      "id": "g_<subject>",
-      "title": "...",
-      "weight": 5,
-      "deadline": "YYYY-MM-DD"
-    }
-  ],
-  "tasks": [
-    {
-      "id": "t_NNN",
-      "goal_id": "g_<subject>",
-      "title": "...",
-      "scheduled_at": "YYYY-MM-DDTHH:MM:SS+03:00",
-      "est_minutes": 60,
-      "status": "planned",
-      "snoozed_until": null
-    }
-  ]
+  "user_id": "tg-1234567890",
+  "goals": [{ "id": "g_...", "title": "...", "weight": 5 }],
+  "tasks": [{
+    "id": "t_001",
+    "goal_id": "g_...",
+    "title": "...",
+    "scheduled_at": "YYYY-MM-DDTHH:MM:SS+03:00",
+    "est_minutes": 60,
+    "goal_weight": 5,
+    "status": "planned",
+    "snoozed_until": null
+  }],
+  "load": { "sum_difficulty": 7, "budget": 9 }
 }
 ```
 
 ## Адаптация под `purpose`
 
-### `purpose = olympiad`
-- Цели по `olympiad_subject`
-- Задачи: повторить теорию (60 мин) + решить 5-10 задач (60 мин) по слабым темам из `olympiad_level`
+- **olympiad** — по `olympiad_subject`, слабые блоки из `olympiad_level(s)`
+- **exam** — по `exam_subject` / `exam_topics`, слабые из `exam_topic_levels`
+- **topic** — по `study_topic` / `topic_sublevels`
 
-### `purpose = exam`
-- Цели по `exam_subjects`
-- Задачи: тема из `exam_topics` со слабым уровнем (`zero` / `weak`) — теория + задачи
-- Если `exam_subject_variant = profile` — больше задач повышенной сложности
+## Spaced repetition
 
-### `purpose = topic`
-- Цель по `study_topic`
-- Задачи: подпункты из `topic_sublevels` со слабым уровнем
-
-## Распределение задач по времени
-- **Утро (10:00)** — теория / новая тема (когда свежая голова)
-- **День (14:00)** — задачи / практика
-- **Вечер (18:00)** — повторение / карточки / тест
-
-## Если профиля нет / `setup_status ≠ complete`
-- Не создавать план. Сказать: «Сначала закончим настройку» → вести в онбординг через `session-start`.
-
-## Данные
-- Читает: `users/<user_key>/profile.md`, `users/<user_key>/plan.md`
-- Пишет: `users/<user_key>/plans/YYYY-MM-DD.json`
+Слабые темы → `scripts/spaced-repetition.mjs` → кандидаты в дневной план. Интервалы: 1→3→7→14→30 дней.
 
 ## Зависимости
-- После `setup-finalize` + `study-plan` (`setup_status: complete`)
-- Перед `goal-checkin-notifier`
+
+- После `setup-finalize` + `study-plan`
+- Перед `checkins` / `task-pings`
 
 ## Где живёт реальное исполнение
 
-**`SOUL.md` → секция «После onboarding»** — это то, что агент реально выполняет. Этот скилл — **дизайн-документ** для справки и эволюции.
+**`SOUL.md` → «Рабочий режим» + таблица скриптов.** Этот файл — дизайн-документ.

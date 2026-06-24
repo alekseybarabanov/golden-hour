@@ -1,8 +1,10 @@
-# profile.md — пример (после hello-intro)
+# Профиль — пример (после hello-intro)
 
-- name: Алексей
-- setup_status: in_progress
-- purpose: exam
-- created: 2026-06-19
+- **name:** "Алексей"
+- **setup_status:** in_progress
+- **purpose:** exam
+- **created:** 2026-06-19
 
 > Поля добавляются пошагово онбордингом. После `setup-finalize` → `setup_status: complete`.
+> Формат `- **ключ:** значение` обязателен — иначе скрипты не прочитают профиль.
+> Несколько целей: `- **purposes:** ["exam", "olympiad"]` (JSON-массив). Не писать `user_key` в профиль — он определяется каналом.

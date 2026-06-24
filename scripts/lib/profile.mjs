@@ -16,7 +16,11 @@ function parseScalar(raw) {
     try {
       return JSON.parse(s.replace(/'/g, '"'));
     } catch {
-      return s;
+      const inner = s.slice(1, -1).trim();
+      if (!inner) return [];
+      return inner.split(/,\s*/).map((part) =>
+        part.trim().replace(/^["']|["']$/g, "")
+      );
     }
   }
   if (
@@ -81,13 +85,23 @@ function parseSubBlock(lines, start) {
   return { value: null, end: start };
 }
 
+function parsePlainYamlLine(line) {
+  const trimmed = line.trim();
+  if (!trimmed || trimmed.startsWith("#")) return null;
+  const m = trimmed.match(/^([a-zA-Z_][\w-]*):\s*(.*)$/);
+  if (!m) return null;
+  return { key: m[1].trim(), value: parseScalar(m[2].trim()) };
+}
+
 export function parseProfile(text) {
   const profile = {};
-  const lines = text.replace(/\r\n/g, "\n").split("\n");
+  const lines = text.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").split("\n");
+  let hasMarkdownFields = false;
 
   for (let i = 0; i < lines.length; i++) {
     const m = lines[i].match(/^-\s+\*\*([^*]+):\*\*\s*(.*)$/);
     if (!m) continue;
+    hasMarkdownFields = true;
 
     const key = m[1].trim();
     const rest = m[2].trim();
@@ -104,6 +118,13 @@ export function parseProfile(text) {
     }
 
     profile[key] = parseScalar(rest);
+  }
+
+  if (!hasMarkdownFields) {
+    for (const line of lines) {
+      const kv = parsePlainYamlLine(line);
+      if (kv) profile[kv.key] = kv.value;
+    }
   }
 
   return profile;
@@ -135,14 +156,39 @@ export function getSetupStatus(profile) {
   return profile?.setup_status || profile?.["setup_status"] || "new";
 }
 
-/** PNG theme for study-plan-cards / table-cards: light | dark */
-/** @deprecated Use CARD_THEME from card-render.mjs — single built-in dark style. */
-export function getCardTheme(_profile) {
-  return "dark";
+/** Active preparation branches: exam, olympiad, topic (multi-goal users). */
+export function getPurposes(profile) {
+  let raw = profile?.purposes;
+  if (typeof raw === "string") {
+    const t = raw.trim();
+    if (t.startsWith("[")) {
+      try {
+        raw = JSON.parse(t.replace(/'/g, '"'));
+      } catch {
+        raw = t
+          .slice(1, -1)
+          .split(/,\s*/)
+          .map((p) => p.trim().replace(/^["']|["']$/g, ""))
+          .filter(Boolean);
+      }
+    } else if (t) {
+      raw = [t];
+    }
+  }
+  if (Array.isArray(raw) && raw.length) {
+    return [...new Set(raw.map((p) => String(p).trim()).filter(Boolean))];
+  }
+  if (profile?.purpose) return [profile.purpose];
+  return ["topic"];
 }
 
-export function getTopicsFromProfile(profile) {
-  const purpose = profile.purpose;
+/** PNG theme for study-plan-cards / table-cards: light | dark */
+export function getCardTheme(profile) {
+  return profile?.theme === "light" ? "light" : "dark";
+}
+
+export function getTopicsFromProfile(profile, purposeOverride) {
+  const purpose = purposeOverride || profile.purpose;
   if (purpose === "exam") {
     let topics = profile.exam_topics;
     if (typeof topics === "string") {

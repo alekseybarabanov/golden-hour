@@ -1,6 +1,6 @@
 # Cron: утренний дневной план
 
-Автогенерация `plans/YYYY-MM-DD.json` **до** morning brief (`goal-checkin-notifier`, по умолчанию 09:00).
+Автогенерация `plans/YYYY-MM-DD.json` **до** morning brief (по умолчанию 09:00).
 
 Скрипт: `node scripts/morning-plan.mjs` — обходит всех пользователей с `setup_status: complete`, пропускает если план на сегодня уже есть.
 
@@ -18,7 +18,12 @@ node scripts/morning-plan.mjs --force     # пересобрать даже ес
 Payload `command` — gateway выполняет shell напрямую:
 
 ```powershell
-.\scripts\cron\register-morning-plan.ps1
+.\scripts\cron\register-all-cron.ps1
+```
+
+Регистрирует: `morning-plan` (07:00), `morning-brief` (09:00), `task-pings` (*/5), `evening-checkin` (21:00), `timer-tick` (1m). Доставка через `cron-deliver.mjs` + `TELEGRAM_BOT_TOKEN`. Требуется `openclaw gateway`.
+
+Или только план:
 ```
 
 Или вручную:

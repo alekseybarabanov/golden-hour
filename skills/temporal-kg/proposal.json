@@ -4,7 +4,7 @@
   "kind": "update",
   "status": "applied",
   "title": "temporal-kg — golden-hour integration",
-  "description": "Per-user temporal KG with scripts/temporal-kg.mjs, wired to spaced-repetition, reflection-loop, daily-study-checkin.",
+  "description": "Per-user temporal KG with scripts/temporal-kg.mjs, wired to spaced-repetition and checkins (reflection).",
   "appliedAt": "2026-06-22T00:00:00.000Z",
   "target": {
     "skillName": "temporal-kg",

@@ -1,29 +1,29 @@
 ---
 name: "study-cards"
-description: "Render engine: PNG 1080×1440 for study plans, task stats, and tables (built-in dark theme). Called by study-plan-cards and table-cards.mjs."
+description: "Render engine: PNG for plans, stats, tables. Called by cards skill (study-plan-cards.mjs / table-cards.mjs)."
 ---
 
 # Study Cards — render engine
 
-**Низкоуровневый движок рендера.** Не вызывай напрямую из диалога, если пользователь просит «карточки по плану» — сначала **`study-plan-cards`** (он выберет режим, соберёт CardPlan и вызовет этот скилл).
+**Низкоуровневый движок рендера.** Точка входа для агента — скилл **`cards`**, не этот файл напрямую.
 
 ## Роль в связке
 
 | Скилл | Роль |
 |---|---|
-| **`study-plan-cards`** | Оркестратор: триггеры, источники данных, CardPlan, доставка в Telegram |
+| **`cards`** | Оркестратор: триггеры, CardPlan, доставка в Telegram |
 | **`study-cards`** (этот) | Движок: `render.js`, `render-stats.js`, `render-table.js` → PNG |
 
-**Стиль:** одна встроенная тёмная тема (`lib/palette.js` → `DEFAULT_THEME = dark`). Без выбора в профиле.
+**Стиль:** тёмная и светлая темы (`--themes=dark|light`). По умолчанию — `profile.md → theme` (default `dark`).
 
 ```
-daily-plan / study-plan / exam-topics / task-tracker
+daily-plan / study-plan / exam-topics / tasks
                     │
                     ▼
-           study-plan-cards  ──exec──►  study-cards/render.js
+           cards  ──exec──►  study-cards/render.js
                     │                   study-cards/render-stats.js
                     ▼
-              cards/*.png  ──►  goal-checkin-notifier / Telegram
+              cards/*.png  ──►  checkins / Telegram
 ```
 
 ## Скрипты
@@ -40,7 +40,7 @@ node skills/study-cards/render.js \
 Флаги:
 - `--source=` — CardPlan JSON (default: `plan.json` рядом со скриптом)
 - `--output-dir=` — куда писать PNG/HTML (default: каталог скрипта)
-- `--themes=dark` — встроенная тема (default, единственная в golden-hour)
+- `--themes=dark|light` — встроенные темы (default `dark`, из `profile.md → theme`)
 - `--no-weeks` — только обложка
 
 Выход: `cover_dark.png`, `weekN_dark.png`
@@ -56,21 +56,33 @@ node skills/study-cards/render-table.js \
 
 JSON: `{ title, subtitle?, headers[], rows[][] }`. Вызывается из `scripts/table-cards.mjs`.
 
-### `render-stats.js` — статистика (task-tracker)
+### `render-stats.js` — статистика (tasks)
 
 ```bash
 node skills/study-cards/render-stats.js \
-  --source=users/<user_key>/state/tasks.yaml \
+  --source=users/<user_key>/tasks.yaml \
   --output-dir=cards/ \
   --themes=dark
 ```
 
 Выход: `stats_cover_*`, `stats_deadlines_*`, `stats_cats_*`
 
+### `check-prompt.js` — pre-flight guard (image_generate)
+
+Перед `image_generate` с русским текстом — проверка. AI ломает кириллицу в таблицах; для учебного контента используй `render.js` (HTML+Edge).
+
+```bash
+node skills/study-cards/check-prompt.js --tool image_generate --prompt "План олимпиады"
+node skills/study-cards/check-prompt.js --tool image_generate --source=cards/plan.json
+node skills/study-cards/check-prompt.js --tool render --prompt "..."   # render + кириллица = OK
+```
+
+Exit: `0` ok · `1` при `--strict` и не-ASCII · `2` usage error.
+
 ## Форматы
 
 - **CardPlan** (`plan.json`): см. `examples/plan.example.json` и раздел в `study-plan-cards/SKILL.md`
-- **tasks.yaml**: см. `examples/tasks.example.yaml` — совместимо с `task-tracker`
+- **tasks.yaml**: см. `examples/tasks.example.yaml` — формат скилла `tasks`
 
 ## Требования
 
@@ -91,4 +103,4 @@ node skills/study-cards/render-stats.js \
 
 - **`study-plan-cards`** — единственная точка входа для агента
 - `study-plan`, `daily-plan`, `exam-topics` — источники CardPlan
-- `task-tracker`, `longterm-stats` — источник `tasks.yaml`
+- `tasks`, `longterm-stats` — источник `users/<user_key>/tasks.yaml`

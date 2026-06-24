@@ -1,5 +1,7 @@
 # Telegram inline buttons
 
+> **DEPRECATED** — Golden Hour больше не использует inline-кнопки. Действия — текстом в чате. Этот файл оставлен для справки по legacy `callback_data`, если придёт старый callback.
+
 ## Формат inline_keyboard
 
 Telegram ожидает массив массивов кнопок:

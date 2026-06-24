@@ -15,10 +15,11 @@
 | `profile.md` | цель, предмет, уровни, дедлайн, `setup_status` |
 | `plan.md` | макро-план (генерирует `study-plan`) |
 | `progress.md` | чек-ины, streak, закрытые темы |
-| `tasks.md` | активные задачи |
-| `tasks.yaml` | данные трекера (опционально) |
+| `tasks.md` | активные задачи (рендер из `tasks.yaml`) |
+| `tasks.yaml` | данные трекера задач |
+| `recurring.json` | повторяющиеся дела для `daily-plan` |
 | `plans/YYYY-MM-DD.json` | дневной план для напоминаний |
-| `focus/sessions.json` | фокус-сессии |
+| `timer/` | pomodoro + focus сессии (единое хранилище) |
 | `materials/` | материалы по цели |
 | `google-calendar.json` | OAuth-токен (приватно) |
 

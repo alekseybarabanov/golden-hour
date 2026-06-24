@@ -7,6 +7,10 @@ users/*
 data/teams/*
 !data/teams/.gitkeep
 
+# Telegram-группы (приватные данные групп)
+data/groups/*
+!data/groups/.gitkeep
+
 memory/*
 !memory/*.example.md
 !memory/task-categories.example.md
@@ -44,6 +48,7 @@ reflection-loop-20260618-*/
 spaced-repetition-20260618-*/
 temporal-kg-20260618-*/
 rita-*/
+agents/
 .clawhub/
 .test-table/
 
@@ -62,6 +67,12 @@ desktop.ini
 *.tmp
 *.bak
 *~
+backup-*/
+skills/.archive-*/
+scripts/.archive-*/
+.test-team-tasks-*/
+.test-profile-*/
+skills/study-cards/users/
 
 # Logs
 *.log
@@ -78,6 +89,8 @@ venv/
 
 # Node
 node_modules/
+.open-design-tmp/
+presentation/node_modules/
 
 # SQLite database (user data — not committed)
 *.db

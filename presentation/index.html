@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Золотой час — презентация</title>
+<link rel="stylesheet" href="assets/fonts.css">
+<link rel="stylesheet" href="assets/base.css">
+<link rel="stylesheet" href="assets/animations/animations.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="tpl-product-launch">
+<div class="deck">
+
+  <section class="slide dark" data-title="Золотой час">
+    <div class="hero-shot"></div>
+    <div style="position:absolute;top:56px;left:112px" class="brand">◎ Золотой час</div>
+    <p class="kicker">ИИ-агент · 2026</p>
+    <h1 class="h1 anim-fade-up" data-anim="fade-up">Золотой час 🌅<br><span style="background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent">Учись умно.</span></h1>
+    <p class="lede mt-m" style="max-width:42ch">Подготовка к олимпиадам, экзаменам и темам — в Telegram.</p>
+    <aside class="notes">Открывающий слайд. Представить продукт как персонального ИИ-наставника.</aside>
+  </section>
+
+  <section class="slide" data-title="Проблема">
+    <p class="kicker">Проблема</p>
+    <h2 class="h2">Сложно держать<br>ритм самому.</h2>
+    <div class="grid g3 mt-l anim-stagger-list">
+      <div class="feature-card"><div class="icon">?</div><h4>Планирование</h4><p class="dim">Неясно, с чего начать</p></div>
+      <div class="feature-card"><div class="icon">↯</div><h4>Срывы</h4><p class="dim">Легко отвлечься</p></div>
+      <div class="feature-card"><div class="icon">◎</div><h4>Прогресс</h4><p class="dim">Теряется из виду</p></div>
+    </div>
+    <aside class="notes">Три боли целевой аудитории.</aside>
+  </section>
+
+  <section class="slide dark" data-title="Решение">
+    <p class="kicker">Решение</p>
+    <h2 class="h2">Персональный<br>ИИ-наставник.</h2>
+    <div class="grid g3 mt-l">
+      <div class="card"><h4>В Telegram</h4><p>Всегда под рукой</p></div>
+      <div class="card"><h4>Помнит тебя</h4><p>Цель и уровень</p></div>
+      <div class="card"><h4>Без давления</h4><p>Тёплый тон 🌅</p></div>
+    </div>
+    <aside class="notes">Ключевое ценностное предложение.</aside>
+  </section>
+
+  <section class="slide center tc" data-title="Для кого">
+    <div>
+      <p class="kicker">Для кого</p>
+      <h1 class="h1" style="font-size:100px">Олимпиады<br>Экзамены<br>Темы</h1>
+    </div>
+    <aside class="notes">Три ветки purpose: olympiad, exam, topic.</aside>
+  </section>
+
+  <section class="slide" data-title="Общение">
+    <p class="kicker">Как общаться</p>
+    <h2 class="h2">Просто пиши<br>словами.</h2>
+    <div class="grid g3 mt-l">
+      <div class="feature-card"><div class="icon">✎</div><h4>Без команд</h4><p class="dim">Никаких CLI</p></div>
+      <div class="feature-card"><div class="icon">◎</div><h4>Понимает контекст</h4><p class="dim">Естественный язык</p></div>
+      <div class="feature-card"><div class="icon">→</div><h4>Действует сам</h4><p class="dim">План, таймер, чек-ин</p></div>
+    </div>
+    <aside class="notes">Агент-управляемый интерфейс.</aside>
+  </section>
+
+  <section class="slide dark" data-title="Две фазы">
+    <p class="kicker">Архитектура</p>
+    <h2 class="h2">Две фазы<br>работы.</h2>
+    <div class="grid g2 mt-l" style="gap:48px">
+      <div class="card"><h4>1 · Настройка</h4><p>Только вопросы. Профиль и цель.</p></div>
+      <div class="card"><h4>2 · Рабочий режим</h4><p>План, задачи, фокус, прогресс.</p></div>
+    </div>
+    <aside class="notes">setup_status: in_progress → complete.</aside>
+  </section>
+
+  <section class="slide" data-title="Настройка">
+    <p class="kicker">Фаза 1</p>
+    <h2 class="h2">Знакомство<br>и цель.</h2>
+    <div class="stack mt-l" style="max-width:900px">
+      <div class="step"><div class="n">1</div><div><h4>Имя</h4><p class="dim">Приветствие</p></div></div>
+      <div class="step"><div class="n">2</div><div><h4>Цель</h4><p class="dim">Экзамен · олимпиада · тема</p></div></div>
+      <div class="step"><div class="n">3</div><div><h4>Уровень</h4><p class="dim">Самооценка по темам</p></div></div>
+    </div>
+    <aside class="notes">Onboarding skill, шаги 1–6.</aside>
+  </section>
+
+  <section class="slide dark" data-title="Онбординг">
+    <p class="kicker">Онбординг</p>
+    <h2 class="h2">Финал<br>настройки.</h2>
+    <div class="grid g3 mt-l">
+      <div class="card"><h4>Дедлайн</h4><p>Дата или «без срока»</p></div>
+      <div class="card"><h4>Часов/нед</h4><p>Реальный бюджет</p></div>
+      <div class="card"><h4>Темп</h4><p>Лёгкий · норм · интенсив</p></div>
+    </div>
+    <aside class="notes">setup-finalize → study-plan.</aside>
+  </section>
+
+  <section class="slide center tc" data-title="Старт">
+    <div>
+      <p class="kicker">После настройки</p>
+      <h1 class="h1" style="font-size:72px">Макро-план готов</h1>
+      <p class="lede mt-m">Меню возможностей · «Спланировать сегодня?»</p>
+    </div>
+    <aside class="notes">help-menu после шага 7.</aside>
+  </section>
+
+  <section class="slide" data-title="Рабочий режим">
+    <p class="kicker">Фаза 2</p>
+    <h2 class="h2">Ежедневный<br>цикл.</h2>
+    <div class="grid g4 mt-l">
+      <div class="feature-card"><div class="icon">📅</div><h4>План</h4></div>
+      <div class="feature-card"><div class="icon">✓</div><h4>Задачи</h4></div>
+      <div class="feature-card"><div class="icon">⏱</div><h4>Фокус</h4></div>
+      <div class="feature-card"><div class="icon">📊</div><h4>Прогресс</h4></div>
+    </div>
+    <aside class="notes">daily-plan → checkins → timer → progress.</aside>
+  </section>
+
+  <section class="slide dark" data-title="Память">
+    <p class="kicker">Данные</p>
+    <h2 class="h2">Каждый —<br>своя папка.</h2>
+    <div class="grid g3 mt-l">
+      <div class="card"><h4>profile.md</h4><p>Цель и уровни</p></div>
+      <div class="card"><h4>plan.md</h4><p>Макро-план</p></div>
+      <div class="card"><h4>progress.md</h4><p>История и streak</p></div>
+    </div>
+    <aside class="notes">users/&lt;user_key&gt;/ изоляция.</aside>
+  </section>
+
+  <section class="slide" data-title="Макро-план">
+    <p class="kicker">study-plan</p>
+    <h2 class="h2">План до<br>дедлайна.</h2>
+    <div class="grid g3 mt-l">
+      <div class="feature-card"><div class="icon">W</div><h4>Недели</h4><p class="dim">Бюджет времени</p></div>
+      <div class="feature-card"><div class="icon">↓</div><h4>Слабые темы</h4><p class="dim">Больше часов</p></div>
+      <div class="feature-card"><div class="icon">✓</div><h4>Чек-поинты</h4><p class="dim">Контроль пути</p></div>
+    </div>
+    <aside class="notes">«Составь план» — триггер.</aside>
+  </section>
+
+  <section class="slide dark" data-title="День">
+    <p class="kicker">daily-plan</p>
+    <h2 class="h2">План<br>на сегодня.</h2>
+    <div class="grid g3 mt-l">
+      <div class="card"><h4>2–4 задачи</h4><p>По дневной нагрузке</p></div>
+      <div class="card"><h4>Утро · день · вечер</h4><p>Слоты 10 / 14 / 18</p></div>
+      <div class="card"><h4>JSON-план</h4><p>Для чек-инов</p></div>
+    </div>
+    <aside class="notes">«Спланируй день».</aside>
+  </section>
+
+  <section class="slide" data-title="Повторы">
+    <p class="kicker">Spaced repetition</p>
+    <h2 class="h2">Повторяй<br>вовремя.</h2>
+    <div class="center mt-l">
+      <div class="pill pill-accent" style="font-size:28px;padding:16px 32px">1 → 3 → 7 → 14 → 30</div>
+      <p class="lede mt-m tc">«Что повторить?» — слабые темы</p>
+    </div>
+    <aside class="notes">Интервальное повторение.</aside>
+  </section>
+
+  <section class="slide dark" data-title="Карточки">
+    <p class="kicker">cards</p>
+    <h2 class="h2">План —<br>картинками.</h2>
+    <div class="grid g2 mt-l">
+      <div class="card"><h4>Карточки плана</h4><p>PNG в Telegram</p></div>
+      <div class="card"><h4>Таблицы</h4><p>Всегда изображением</p></div>
+    </div>
+    <aside class="notes">study-plan-cards, table-cards.</aside>
+  </section>
+
+  <section class="slide" data-title="Задачи">
+    <p class="kicker">tasks</p>
+    <h2 class="h2">Задачи<br>под контролем.</h2>
+    <div class="grid g3 mt-l">
+      <div class="feature-card"><div class="icon">+</div><h4>Добавить</h4><p class="dim">Список · закрыть</p></div>
+      <div class="feature-card"><div class="icon">⊞</div><h4>Разбить</h4><p class="dim">Шаги &lt;15 мин</p></div>
+      <div class="feature-card"><div class="icon">↻</div><h4>Повтор</h4><p class="dim">Каждый день</p></div>
+    </div>
+    <aside class="notes">tasks skill + recurring.</aside>
+  </section>
+
+  <section class="slide dark" data-title="Приоритеты">
+    <p class="kicker">task-weighting</p>
+    <h2 class="h2">Что<br>горит?</h2>
+    <div class="grid g3 mt-l">
+      <div class="card"><h4>Важнее</h4><p>Приоритет 1–5</p></div>
+      <div class="card"><h4>Тяжелее</h4><p>Сложность</p></div>
+      <div class="card"><h4>Прогресс</h4><p>«Что горит?»</p></div>
+    </div>
+    <aside class="notes">Веса тем и задач.</aside>
+  </section>
+
+  <section class="slide" data-title="Помодоро">
+    <p class="kicker">timer · pomodoro</p>
+    <h2 class="h2">25/5<br>и длинные циклы.</h2>
+    <div class="grid g2 mt-l">
+      <div class="feature-card"><div class="icon">🍅</div><h4>Помодоро</h4><p class="dim">Работа + перерыв</p></div>
+      <div class="feature-card"><div class="icon">⏭</div><h4>Управление</h4><p class="dim">Пропуск · стоп · статус</p></div>
+    </div>
+    <aside class="notes">«Начни помодоро».</aside>
+  </section>
+
+  <section class="slide dark" data-title="Focus">
+    <p class="kicker">timer · focus</p>
+    <h2 class="h2">Одна задача.<br>Один фокус.</h2>
+    <p class="lede mt-l" style="max-width:50ch">«Давай час над X» — фокус-сессия с похвалой в конце.</p>
+    <aside class="notes">Focus mode для глубокой работы.</aside>
+  </section>
+
+  <section class="slide" data-title="Чек-ины">
+    <p class="kicker">checkins</p>
+    <h2 class="h2">Дисциплина<br>без давления.</h2>
+    <div class="grid g3 mt-l">
+      <div class="feature-card"><div class="icon">☀</div><h4>09:00</h4><p class="dim">Утренний бриф</p></div>
+      <div class="feature-card"><div class="icon">◎</div><h4>Пинги</h4><p class="dim">По задачам дня</p></div>
+      <div class="feature-card"><div class="icon">☾</div><h4>21:00</h4><p class="dim">Итог дня</p></div>
+    </div>
+    <aside class="notes">Cron + HEARTBEAT.</aside>
+  </section>
+
+  <section class="slide dark" data-title="Рефлексия">
+    <p class="kicker">reflection</p>
+    <h2 class="h2">Срыв —<br>не конец.</h2>
+    <p class="lede mt-l">«Не успел» → разбор без вины → корректировка плана</p>
+    <aside class="notes">reflection-loop skill.</aside>
+  </section>
+
+  <section class="slide" data-title="Материалы">
+    <p class="kicker">goal-materials</p>
+    <h2 class="h2">Подборка<br>на сегодня.</h2>
+    <div class="grid g2 mt-l">
+      <div class="feature-card"><div class="icon">📚</div><h4>Локально</h4><p class="dim">Своя библиотека</p></div>
+      <div class="feature-card"><div class="icon">🔍</div><h4>Поиск</h4><p class="dim">Веб-материалы</p></div>
+    </div>
+    <aside class="notes">«Дай материалы».</aside>
+  </section>
+
+  <section class="slide dark" data-title="Статистика">
+    <p class="kicker">longterm-stats</p>
+    <h2 class="h2">Видишь<br>прогресс.</h2>
+    <div class="grid g3 mt-l">
+      <div class="card"><h4>Неделя</h4></div>
+      <div class="card"><h4>Месяц</h4></div>
+      <div class="card"><h4>Streak 🔥</h4></div>
+    </div>
+    <aside class="notes">Слабые темы в отчётах.</aside>
+  </section>
+
+  <section class="slide" data-title="История">
+    <p class="kicker">temporal-kg</p>
+    <h2 class="h2">Граф<br>событий.</h2>
+    <p class="lede mt-l">«История по теме X» — вехи, milestone, чек-ины</p>
+    <aside class="notes">Knowledge graph по темам.</aside>
+  </section>
+
+  <section class="slide dark" data-title="Календарь">
+    <p class="kicker">google-calendar-sync</p>
+    <h2 class="h2">Синхронизация<br>с Google.</h2>
+    <div class="grid g2 mt-l">
+      <div class="card"><h4>Дедлайны</h4><p>В календаре</p></div>
+      <div class="card"><h4>События</h4><p>Двусторонняя связь</p></div>
+    </div>
+    <aside class="notes">Опционально при онбординге.</aside>
+  </section>
+
+  <section class="slide" data-title="Команда">
+    <p class="kicker">team-tasks</p>
+    <h2 class="h2">Учитесь<br>вместе.</h2>
+    <div class="grid g3 mt-l">
+      <div class="feature-card"><div class="icon">+</div><h4>Создать</h4><p class="dim">Команда</p></div>
+      <div class="feature-card"><div class="icon">@</div><h4>Пригласить</h4><p class="dim">По коду</p></div>
+      <div class="feature-card"><div class="icon">✓</div><h4>Беру · Сдал</h4><p class="dim">Статусы</p></div>
+    </div>
+    <aside class="notes">team-tasks + telegram-group.</aside>
+  </section>
+
+  <section class="slide dark" data-title="Группы">
+    <p class="kicker">telegram-group</p>
+    <h2 class="h2">Командная<br>работа в TG.</h2>
+    <p class="lede mt-l">Общие задачи · уведомления участникам</p>
+    <aside class="notes">Групповые чаты Telegram.</aside>
+  </section>
+
+  <section class="slide" data-title="Помощь">
+    <p class="kicker">help-menu</p>
+    <h2 class="h2">«Что<br>умеешь?»</h2>
+    <p class="lede mt-l">Меню по фазе · подсказки · без технических терминов</p>
+    <aside class="notes">/help, «помощь», «меню».</aside>
+  </section>
+
+  <section class="slide dark" data-title="Архитектура">
+    <p class="kicker">Под капотом</p>
+    <h2 class="h2">Три слоя.</h2>
+    <div class="grid g3 mt-l">
+      <div class="card"><h4>SOUL.md</h4><p>Логика агента</p></div>
+      <div class="card"><h4>skills/</h4><p>Возможности</p></div>
+      <div class="card"><h4>scripts/</h4><p>Точные расчёты</p></div>
+    </div>
+    <aside class="notes">OpenClaw + Node ≥18.</aside>
+  </section>
+
+  <section class="slide" data-title="Цепочка">
+    <p class="kicker">Workflow</p>
+    <h2 class="h2">От старта<br>до прогресса.</h2>
+    <div class="stack mt-l mono dim" style="font-size:18px;max-width:100%">
+      <div>session-start → onboarding → study-plan</div>
+      <div>daily-plan → checkins → timer → progress</div>
+    </div>
+    <aside class="notes">Полный цикл пользователя.</aside>
+  </section>
+
+  <section class="slide dark" data-title="Финал">
+    <p class="kicker">Золотой час 🌅</p>
+    <div class="row" style="gap:80px;align-items:center">
+      <div style="flex:1">
+        <p class="testimonial">Учись умно. Не срывайся. Прогресс — на виду.</p>
+      </div>
+      <div style="flex:0 0 auto;text-align:center">
+        <p class="dim mb-m">Начни в Telegram</p>
+        <div style="font-size:72px;font-weight:900;letter-spacing:-.04em">🌅</div>
+        <a class="cta-btn mt-l" href="#">Золотой час →</a>
+        <p class="dim mt-m" style="font-size:13px">Олимпиады · экзамены · любые темы</p>
+      </div>
+    </div>
+    <aside class="notes">Призыв к действию.</aside>
+  </section>
+
+</div>
+<script src="assets/runtime.js"></script>
+</body>
+</html>

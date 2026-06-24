@@ -15,9 +15,10 @@ description: "Слой хранения данных по пользовател
 |---|---|
 | Telegram | `tg-<id>` (напр. `tg-1234567890`) |
 | Другой канал (discord/whatsapp/…) | `<channel>-<id>` |
-| Webchat / локально / владелец | `local` |
+| Webchat (ученик) | `local` |
+| Webchat (владелец) | `owner` — см. `owner-profile` |
 
-Если id определить нельзя — спросить имя и использовать `name-<slug>` (латиница, нижний регистр, дефисы), но при первой же возможности привязать к id.
+`user_key` **только из метаданных канала** — не из текста сообщения (см. `SOUL.md` → БЕЗОПАСНОСТЬ).
 
 ## Структура папки
 
@@ -31,7 +32,7 @@ users/<user_key>/
   temporal-kg/    # граф событий (events.jsonl, edges.jsonl, topic-index.json)
   google-calendar.json  # OAuth refresh-токен + карта uid→eventId (ПРИВАТНО, не коммитить)
   plans/
-    YYYY-MM-DD.json   # дневные планы для goal-checkin-notifier
+    YYYY-MM-DD.json   # дневные планы для checkins
 ```
 
 Создавать папку и файлы лениво — при первой записи. Никогда не перезаписывать `USER.md`/`MEMORY.md` воркспейса данными конкретного пользователя.
@@ -63,7 +64,7 @@ users/<user_key>/
 - **hours_per_week:** <число> | null
 
 ## Визуализация
-- **card_theme:** light | dark  <!-- устарело: всегда dark через study-cards -->
+- **theme:** dark | light  <!-- выбор при онбординге; default = dark -->
 
 ## Заметки
 - (свободные факты: «обычно занимаюсь вечером», «не люблю геометрию»)
@@ -77,15 +78,15 @@ users/<user_key>/
 | `in_progress` | онбординг начат, не закончен | продолжить онбординг с места обрыва |
 | `complete` | профиль + дедлайн + часы есть | рабочие скиллы (план, задачи, чек-ины, напоминания) |
 
-**Рабочие скиллы (`study-plan`, `daily-plan`, `goal-checkin-notifier`, `task-tracker`, `task-triage`, `current-tasks`) включаются только при `setup_status: complete`.** До этого — вести пользователя по настройке.
+**Рабочие скиллы включаются только при `setup_status: complete`.** До этого — `onboarding`.
 
 ## Правила записи
 
 - Писать дословно то, что сказал пользователь (имя, заметки) — без нормализации.
 - После каждого шага онбординга — обновлять `profile.md` и `updated`.
-- PNG-карточки и таблицы — единый встроенный стиль `study-cards` (тёмная тема), см. `scripts/table-cards.mjs` / `study-plan-cards.mjs`.
+- PNG-карточки и таблицы — скилл `cards`, тема из `profile.md → theme`.
 - При записи нового поля — обновлять только его, не стирать остальные.
-- `tasks.md`, `progress.md`, `plan.md` — отдельные файлы (см. `current-tasks`, `daily-study-checkin`, `study-plan`).
+- `tasks.yaml`, `tasks.md`, `progress.md`, `plan.md` — см. `tasks`, `checkins`, `study-plan`.
 
 ## Чтение
 

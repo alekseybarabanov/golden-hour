@@ -18,7 +18,12 @@ export function listUserDirs(readText = (p) => {
 
   return fs
     .readdirSync(root, { withFileTypes: true })
-    .filter((d) => d.isDirectory() && !d.name.startsWith("archive"))
+    .filter(
+      (d) =>
+        d.isDirectory() &&
+        !d.name.startsWith("archive") &&
+        !d.name.startsWith("_")
+    )
     .map((d) => ({
       user_key: d.name,
       dir: path.join(root, d.name),

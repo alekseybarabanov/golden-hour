@@ -5,6 +5,8 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { readJson } from "./cli.mjs";
 import { resolveToday } from "./dates.mjs";
+import { addTimeSpentMinutes } from "./tasks-core.mjs";
+import { isTaskDone } from "./plan-utils.mjs";
 
 const TZ = "+03:00";
 export const VARIANTS = {
@@ -16,7 +18,7 @@ export const VARIANTS = {
 export const LONG_BREAK_EVERY = 4;
 export const LONG_BREAK_MINUTES = 15;
 const ACTIVE = new Set(["work", "break", "long_break"]);
-const DONE_STATUS = new Set(["done", "skipped"]);
+const DONE_STATUS = new Set(["done", "skipped", "completed", "complete", "finished"]);
 
 export function pomodoroDir(userDir) {
   return path.join(userDir, "pomodoro");
@@ -132,6 +134,9 @@ function creditWork(dir, session, credited, planned, elapsed, reason) {
     elapsed_minutes: elapsed,
     reason,
   });
+  if (session?.task_id) {
+    addTimeSpentMinutes(path.dirname(dir), session.task_id, credited);
+  }
 }
 
 function elapsedMinutes(session, now = nowISO()) {
@@ -150,16 +155,13 @@ function workCredit(session, reason, full = false) {
 }
 
 function phaseButtons() {
-  return [
-    [{ text: "Пропустить фазу", callback_data: "pomodoro:skip" }],
-    [{ text: "Завершить", callback_data: "pomodoro:stop" }],
-  ];
+  return null;
 }
 
 function workStartMessage(session) {
   const n = (session.cycles_done || 0) + 1;
   const w = session.phase_duration_minutes || session.work_minutes;
-  return `помодоро Помодоро #${n} • время работы • ${w} мин. Погнали!`;
+  return `🍅 Помодоро #${n} • работа • ${w} мин. Погнали!`;
 }
 
 function breakStartMessage(session) {
@@ -318,7 +320,7 @@ export function cmdStart(dir, parsed, opts = {}) {
       ok: false,
       error: "warmup",
       message:
-        "Привет! Чтобы я мог присылать уведомления, сначала нажми /start в этом чате. После этого /pomodoro start заработает.",
+        "Привет! Чтобы я мог присылать уведомления, сначала нажми /start в этом чате. После этого «начни таймер» или `/timer start` заработает.",
     };
   }
   const session = newSession(parsed, { dialog_opened: existing?.dialog_opened !== false });
@@ -335,7 +337,7 @@ export function cmdStart(dir, parsed, opts = {}) {
 export function cmdStatus(dir) {
   const session = loadSession(dir);
   if (!isActive(session)) {
-    return { ok: true, active: false, message: "Сейчас нет активной сессии помодоро. `/pomodoro start classic` — начать." };
+    return { ok: true, active: false, message: "Сейчас нет активной сессии. `/timer start` или «начни помодоро» — начать." };
   }
   const s = statusMessage(session);
   return { ok: true, active: true, ...s };
@@ -570,7 +572,7 @@ export function isPlanBehind(userDir, today, opts = {}) {
       break;
     }
   }
-  const done = tasks.filter((t) => t.status === "done").length;
+  const done = tasks.filter((t) => isTaskDone(t)).length;
   const rate = tasks.length ? done / tasks.length : 1;
   if (overdue) return { behind: true, reason: "overdue" };
   if (pastCheck && rate < threshold) return { behind: true, reason: "low_completion" };
@@ -591,7 +593,7 @@ function formatScheduleProposal(blocks, from, to, topic) {
   const h = Math.floor(workMin / 60);
   const m = workMin % 60;
   const workStr = h ? `${h}ч ${m ? `${m}м` : ""}`.trim() : `${workMin} мин`;
-  return `🗓 Расписание по плану (${fmtTime(from)}–${fmtTime(to)}, ${topic}):\n\n${lines.join("\n")}\n\nИтого: ${workStr} работы, ${breakMin} мин перерывов, ${cycles} циклов.\n\nПодойдёт? Или скажи другое время.`;
+  return `🗓 Расписание по плану (${fmtTime(from)}–${fmtTime(to)}, ${topic}):\n\n${lines.join("\n")}\n\nИтого: ${workStr} работы, ${breakMin} мин перерывов, ${cycles} циклов.\n\nПодойдёт? Напиши **подтверждаю** или **отмена** (или предложи другое время).`;
 }
 
 export function cmdSchedule(dir, userDir, parsed, opts = {}) {
@@ -612,7 +614,7 @@ export function cmdSchedule(dir, userDir, parsed, opts = {}) {
         ok: false,
         error: "no_plan",
         message:
-          "В плане на сегодня нет подходящего блока. Скажи время вручную:\n• `/pomodoro schedule 15:00-17:00`\n• `/pomodoro schedule 2h`\n• `/pomodoro start classic`",
+          "В плане на сегодня нет подходящего блока. Скажи время вручную:\n• «поработаем с 15:00 до 17:00»\n• «поработаем 2 часа»\n• `/timer start`",
       };
     }
     from = w.start;
@@ -637,7 +639,7 @@ export function cmdSchedule(dir, userDir, parsed, opts = {}) {
     return {
       ok: false,
       error: gen.error,
-      message: `Окно слишком маленькое для ${parsed.variant}. Попробуй /pomodoro start short или большее окно.`,
+      message: `Окно слишком маленькое для ${parsed.variant}. Попробуй короткий вариант или большее окно.`,
     };
   }
 
@@ -664,11 +666,7 @@ export function cmdSchedule(dir, userDir, parsed, opts = {}) {
     ok: true,
     action: "schedule_proposed",
     message: formatScheduleProposal(gen.blocks, from, to, topic || "работа"),
-    buttons: [
-      [{ text: "Подтвердить", callback_data: "pomodoro:schedule:confirm" }],
-      [{ text: "Изменить", callback_data: "pomodoro:schedule:edit" }],
-      [{ text: "Отмена", callback_data: "pomodoro:schedule:cancel" }],
-    ],
+    buttons: null,
     proposal_id: proposal.proposal_id,
   };
 }
@@ -716,7 +714,7 @@ export function cmdScheduleCancel(dir) {
   if (fs.existsSync(p)) fs.unlinkSync(p);
   return {
     ok: true,
-    message: "Окей, расписание отменено. Скажи, когда будешь готов(а) — `/pomodoro start` или `/pomodoro schedule`.",
+    message: "Окей, расписание отменено. Скажи, когда будешь готов(а) — «начни таймер» или «поработаем по плану».",
   };
 }
 
@@ -729,7 +727,7 @@ export function cmdSuggest(dir, userDir, opts = {}) {
   const behind = isPlanBehind(userDir, today, opts);
   if (!behind.behind) return { ok: true, fired: false, reason: behind.reason };
   const message =
-    "Вижу, что план на сегодня подгоняет. Хочешь попробовать `/pomodoro start classic` — 25 минут сфокусированной работы?";
+    "Вижу, что план на сегодня подгоняет. Хочешь попробовать 25 минут сфокусированной работы? Скажи «начни помодоро».";
   atomicWriteJson(suggestionsPath(dir), {
     schema: "openclaw.pomodoro.suggestions.v1",
     last_suggestion_date: today,
@@ -746,13 +744,13 @@ export function cmdSuggest(dir, userDir, opts = {}) {
 }
 
 const POMODORO_RE =
-  /(?:^\/pomodoro\b|помодоро|pomodoro\s+(?:start|stop|skip|status|stats|schedule|variants))/i;
+  /(?:^\/pomodoro\b|^\/timer\b|помодоро|таймер|timer\s+(?:start|stop|skip|status|stats|schedule))/i;
 
 export function cmdRoute(dir, text) {
   const session = loadSession(dir);
   const t = String(text || "").trim();
   if (t.startsWith("callback_data:")) {
-    if (/pomodoro:/i.test(t)) return { ok: true, is_pomodoro: true };
+    if (/timer:|pomodoro:/i.test(t)) return { ok: true, is_pomodoro: true };
     if (isActive(session)) {
       const elapsed = elapsedMinutes(session);
       const left = Math.max(0, (session.phase_duration_minutes || 0) - elapsed);
@@ -792,5 +790,5 @@ export function variantsListMessage() {
 помодоро long — 50/10
 помодоро extended — 100/20 (1ч40м / 20м)
 помодоро short — 15/3
-⚙️ custom — работа 1–240 мин, отдых 1–60 мин. Например: \`/pomodoro start 30/60\`.`;
+⚙️ custom — работа 1–240 мин, отдых 1–60 мин. Например: «поработаем 30/60».`;
 }

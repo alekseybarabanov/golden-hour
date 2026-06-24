@@ -199,8 +199,8 @@ npm run examples:stats
 # Из плана (от daily-plan) — через оркестратор study-plan-cards
 node ../study-plan-cards/scripts/render.js --mode=from-plan-file --source=plan.json
 
-# Из трекера (от task-tracker)
-node render-stats.js --source=state/tasks.yaml
+# Из трекера (от tasks)
+node render-stats.js --source=users/<user_key>/tasks.yaml
 
 # Pre-flight guard перед image_generate
 node check-prompt.js --tool image_generate --source examples/plan.example.json --strict

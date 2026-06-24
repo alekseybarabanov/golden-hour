@@ -1,23 +1,23 @@
 # goal-materials
 
-> Материалы по целям пользователя: задачи, теория, ссылки, файлы. С автоматической привязкой к целям из `USER.md`, статусами разбора, Telegram inline-кнопками и интеграцией с общим inbox.
+> Материалы по целям пользователя: задачи, теория, ссылки, файлы. Привязка к целям из **`users/<user_key>/profile.md`**, CLI `scripts/goal-materials.mjs`, статусы разбора. Действия в Telegram — **текстом** (без inline-кнопок).
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![OpenClaw Skill](https://img.shields.io/badge/OpenClaw-skill-blue)](https://docs.openclaw.ai)
 
 ## Что это
 
-OpenClaw-скилл, который превращает личную копилку учебных материалов в структурированную библиотеку, привязанную к целям пользователя (ЕГЭ, олимпиады, проекты, любые темы из `USER.md`).
+OpenClaw-скилл, который превращает личную копилку учебных материалов в структурированную библиотеку, привязанную к целям из `users/<user_key>/profile.md` (ЕГЭ, олимпиады, темы).
 
 Поддерживает:
 - 📚 **5 типов материалов**: `problem`, `theory`, `link`, `file`, `note`
-- 🎯 **Автопривязку к целям** из `USER.md` — не нужно каждый раз уточнять, к чему относится материал
+- 🎯 **Автопривязку к целям** из `profile.md` — `goal-materials.mjs goals`
 - 🔄 **Жизненный цикл статусов**: `new → working → understood/stuck → archived`
 - 🎲 **Случайную выдачу** материалов с фильтрами (`pick --type problem --tag параметры --status new`)
 - 🔍 **Поиск** по тексту/тегам/типу/статусу
-- 🤖 **Telegram inline-кнопки**: `[✅ Разобрала] [❌ Не поняла] [⏭ Пропустить]` — статус меняется одним нажатием
-- 📎 **Интеграцию с общим inbox** (`memory/notes.jsonl`) — материалы попадают в поток заметок для последующего обзора через `show-ideas` / `idea-tools`
-- 🌐 **Самостоятельный web_search** — скилл может сам найти 2–3 ссылки по теме, если активная цель задана
+- 💬 **Текстовые команды в Telegram**: «в работу» · «пропустить» · «сохранить» (см. `SKILL.md`)
+- 📎 **Интеграцию с дневником** (`memory/YYYY-MM-DD.md`) при add/status
+- 🌐 **Web-поиск** через саб-агента `web-material-finder` — только если `pick`/`today` пуст
 
 ## Установка
 
@@ -36,25 +36,17 @@ openclaw skills install --from ./goal-materials
 ## Быстрый старт
 
 ```bash
-# Добавить задачу (цель возьмётся автоматически из USER.md)
-> materials add --type problem
-  Найдите все значения параметра a, при которых уравнение x² + ax + 1 = 0
-  имеет два различных корня, оба меньше 2.
+# Цели из profile.md
+node scripts/goal-materials.mjs goals --user tg-123
 
-# Выдать случайную задачу по теме
-> materials pick exam_math_profile --type problem --tag параметры --status new
+# Подборка (перед web-поиском!)
+node scripts/goal-materials.mjs pick --user tg-123 --topic "параметры"
 
-# Посмотреть, что есть по цели
-> materials list exam_math_profile
+# Материалы на сегодня (тема из plans/YYYY-MM-DD.json)
+node scripts/goal-materials.mjs today --user tg-123
 
-# Сводка по статусам
-> materials list --summary
-
-# Поиск по тегу
-> materials search --tag тригонометрия
-
-# Сменить статус
-> materials status m_8a1f2c3d understood
+# Добавить материал
+node scripts/goal-materials.mjs add --user tg-123 --goal exam_math --type problem --title "Задача на параметры" --dry-run
 ```
 
 ## Структура файлов
@@ -90,26 +82,24 @@ materials/
 
 Каждый материал — markdown с YAML frontmatter (id, goal_id, type, tags, status, source, history). Полная схема — [`references/storage-schema.md`](references/storage-schema.md).
 
-## Telegram-кнопки
+## Telegram (текстовые команды)
 
-Все ответы бота сопровождаются inline-кнопками. Полная спецификация — [`references/tg-buttons.md`](references/tg-buttons.md).
+Inline-кнопки **не используются**. Подсказки в тексте сообщения — см. `SKILL.md` и `references/tg-buttons.md` (legacy, deprecated).
 
-Основные наборы:
-- `pick` → `[✅ Разобрала] [❌ Не поняла] [⏭ Пропустить]`
-- `list` (у каждого материала) → `[Открыть] [В работу] [🗑 В архив]`
-- `add` → `[Открыть] [Добавить ещё]`
-- `search` → `[Открыть] [В работу]`
+Основные команды:
+- `pick` → «в работу» · «не понял» · «пропустить»
+- `list` → «открыть» · «в работу» · «в архив»
+- `add` / `search` → «открыть» · «сохранить»
 
-callback_data формат: `mat:<action>:<id>[:<value>]`
-
-При нажатии бот получает callback и автоматически обновляет статус материала, отвечает confirm-сообщением и редактирует исходное сообщение (убирая кнопки).
+Статус материала меняется через `goal-materials.mjs status` по текстовой команде пользователя.
 
 ## Связь с другими скиллами
 
 - **`note-to-file`** — формат записи в `memory/notes.jsonl` совместим
-- **`show-ideas` / `idea-tools`** — материалы попадают в общий поток заметок; фильтруй по `type=material` или `goal_id`
+- **`daily-plan`** — тема дня для `goal-materials.mjs today`
+- **`web-material-finder`** — новый поиск, если локальная библиотека пуста
 - **`goal-checkin-notifier`** — может ссылаться на материалы в утреннем брифе
-- **`focus-timer`** — опционально: писать минуты, потраченные на материал
+- **`timer`** — опционально: писать минуты, потраченные на материал
 
 ## Конвенции
 

@@ -1,14 +1,12 @@
-# Приоритеты пользователя (ШАБЛОН для task-triage)
+# Приоритеты пользователя (ШАБЛОН для tasks / daily-plan)
 
-> Скопируйте в `memory/user-priorities.md` после онбординга или настройте вручную.
+Скопируй в `users/<user_key>/profile.md` → поле `priorities` или используй при triage через `tasks list` + `daily-plan`.
 
-## Критичные сферы
-- (ваша главная цель подготовки)
+```yaml
+priorities:
+  математика: 5
+  физика: 3
+  русский: 2
+```
 
-## Часто откладываемые
-- (что обычно уходит в хвост)
-
-## Capability preferences
-- max_auto_executions_per_session: 5
-- default_auto_execute: true
-- excluded_categories_from_auto: []
+Шкала 1–5: 5 = максимальный приоритет.

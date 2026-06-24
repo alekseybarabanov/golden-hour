@@ -10,7 +10,7 @@ version: "v1"
 
 > Несколько людей работают над **общей целью**. Бот собирает команду, делит таски, трекает «кто что взял/сдал», уведомляет всех о прогрессе.
 
-**Личная таска** (`task-tracker`) = одна голова. **Командная** = общий результат, **один assignee** в моменте, видят все members.
+**Личная таска** (`tasks`) = одна голова. **Командная** = общий результат, **один assignee** в моменте, видят все members.
 
 ---
 
@@ -23,8 +23,8 @@ version: "v1"
 - Первое сообщение нового пользователя → **авто-резолв инвайтов** (`invites resolve`)
 
 **Не путать с:**
-- `current-tasks` / `task-tracker` — личные задачи в `users/<key>/`
-- `evening-task-triage` — личный вечерний разбор
+- `tasks` — личные задачи в `users/<key>/tasks.yaml`
+- `tasks` + `daily-plan` — личный вечерний разбор и план на завтра
 
 ---
 
@@ -132,7 +132,7 @@ node scripts/team-tasks.mjs notifications --user <key> --team team-abc
 
 ## Отличия от личных тасков
 
-| | Личные (`task-tracker`) | Командные (`team-tasks`) |
+| | Личные (`tasks`) | Командные (`team-tasks`) |
 |---|---|---|
 | Файл | `users/<key>/tasks.yaml` | `data/teams/<id>/tasks.json` |
 | Multi-user | только свой `user_key` | membership в команде |
@@ -148,7 +148,7 @@ node scripts/team-tasks.mjs notifications --user <key> --team team-abc
 |---|---|
 | `session-start` | перед работой — `invites resolve` для новичков |
 | `task-decomposition` | крупную командную таску можно разбить до `task add` |
-| `goal-checkin-notifier` | доставка `notifications.recipients` в Telegram |
+| `checkins` | доставка `notifications.recipients` в Telegram |
 | `help-menu` | блок «КОМАНДА» |
 
 ---

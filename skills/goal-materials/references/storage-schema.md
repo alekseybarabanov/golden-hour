@@ -25,21 +25,24 @@ status_history:
 ```json
 {
   "schema_version": 1,
-  "by_id": {
-    "m_a1b2c3d4": {
-      "goal_id": "g_ege_math_profile",
-      "type": "problem",
-      "tags": ["параметры"],
-      "status": "new",
-      "path": "materials/g_ege_math_profile/problems/2026-06-18_parametry.md",
-      "created_at": "2026-06-18T11:59:00+03:00",
-      "updated_at": "2026-06-18T11:59:00+03:00"
-    }
-  }
+  "by_goal": {
+    "exam_russian": [
+      {
+        "id": "m_a1b2c3d4",
+        "type": "theory",
+        "tags": ["егэ"],
+        "status": "new",
+        "path": "theory/2026-06-18_parametry.md",
+        "title": "Задание 4 — орфоэпия",
+        "source_url": "https://..."
+      }
+    ]
+  },
+  "updated_at": "2026-06-18T11:59:00+03:00"
 }
 ```
 
-`index.json` перестраивается командой `materials rebuild-index`.
+`index.json` перестраивается: `node scripts/goal-materials.mjs rebuild-index --user <key>`.
 
 ## memory/notes.jsonl (доп. копия)
 

@@ -1,15 +1,42 @@
 ---
 name: "goal-materials"
-description: "Материалы по целям: add/pick/status; web/file-search/image/draw саб-агентом; tg-кнопки."
+description: "Материалы по целям: add/pick/status; web/file-search/image/draw саб-агентом; текстовые команды."
 ---
 
 # Goal Materials
 
-Библиотека материалов (задачи, теория, ссылки, файлы, заметки, **изображения**), привязанная к целям пользователя из `USER.md`. **Web/file/image/draw-поиск через саб-агента `web-material-finder`** в **5 режимах**: topic-based, source-based, file-search, image-generate, draw-programmatic. Бот не блокируется.
+Библиотека материалов (задачи, теория, ссылки, файлы, заметки, **изображения**), привязанная к целям из **`users/<user_key>/profile.md`** (не `USER.md` воркспейса). Локальные операции — **только через `goal-materials.mjs`**. Web/file/image/draw-поиск — саб-агент `web-material-finder` (5 режимов). Бот не блокируется.
+
+## Обязательный порядок (локальные материалы)
+
+**Перед любым web-поиском или `sessions_spawn`:**
+
+1. `node scripts/goal-materials.mjs pick --user <user_key> [--topic "<тема дня>"]`
+2. Если `count > 0` — показать `items` / `show` по запросу. **Не запускать поиск заново.**
+3. `today` — материалы под тему из `plans/<сегодня>.json`:
+   `node scripts/goal-materials.mjs today --user <user_key>`
+4. Только если pick/today пуст и пользователь явно просит новое — `web-material-finder`.
+
+**Одно сообщение за ход** — не дублировать ответ (placeholder или результат, не оба дважды).
+
+## CLI (`scripts/goal-materials.mjs`)
+
+| Команда | Назначение |
+|---|---|
+| `goals` | `goal_id` из profile.md |
+| `list` | все материалы (`--goal`, `--type`, `--status`, `--tag`) |
+| `pick` | подборка (`--topic`, `--limit`) |
+| `today` | под тему дневного плана |
+| `show --id m_...` | полный текст |
+| `search --query` | поиск по title/id |
+| `add` | добавить (`--dry-run` сначала) |
+| `status --id --status` | new/working/stuck/understood/archived |
+| `rebuild-index` | пересобрать index.json |
+| `fix-frontmatter` | починить битый YAML |
 
 ## Когда использовать
 
-- add / pick / list / search / status — стандартно
+- add / pick / list / search / status — через скрипт выше
 - URL/файл + «найди похожие» — **source-based**
 - PDF/DOCX/PPTX + «найди в нём» — **file-search**
 - «нарисуй / график / схему (художественно)» — **image-generate** (AI)
@@ -20,7 +47,9 @@ description: "Материалы по целям: add/pick/status; web/file-sear
 
 ### 1. Определить цель
 
-Стандарт: exam_<subject>_<variant> / olymp_<subject>_<grade> / topic_<slug> / custom.
+`node scripts/goal-materials.mjs goals --user <user_key>` → `primary` / `goals[]`.
+
+Конвенция slug: `exam_<subject>`, `exam_<subject>_<variant>`, `olymp_<subject>_<grade>`, `topic_<slug>`.
 
 ### 2. Добавить материал (`add`)
 
@@ -61,7 +90,7 @@ status_history:
 
 ### 3. `list` / 4. `pick` / 5. `search` / 6. `status`
 
-Стандартно.
+Только через `goal-materials.mjs`. После `add` / `status` — `rebuild-index` вызывается автоматически.
 
 ### 7. Web/file/image/draw-поиск (через саб-агента)
 
@@ -163,16 +192,15 @@ Placeholder `🎨`, JSON → материал с `image_path`/`image_prompt`/`im
 
 7. **Бот копирует PNG** в `materials/<goal_id>/images/YYYY-MM-DD_<slug>.png`, создаёт frontmatter с `source: "image_draw"`, `draw_backend`, `draw_script_path`. Скрипт остаётся в `_inbox/scripts/` (для повторного использования).
 
-8. **Placeholder/результат в TG:**
+8. **Placeholder/результат в TG (текстом, без кнопок):**
    ```
    # placeholder:
    📐 Чертёж «<prompt>» (программно)…
-   [⏹ Отменить]
+   Напиши «отменить», чтобы прервать.
 
    # результат:
-   📐 Готово:
-   [image inline]
-   [✅ Сохранить] [🔄 Перегенерировать] [🛠 Изменить скрипт]
+   📐 Готово: [картинка]
+   «сохранить» · «перегенерировать» · «изменить скрипт»
    ```
 
 **Преимущества mode=draw:**
@@ -193,16 +221,16 @@ Placeholder `🎨`, JSON → материал с `image_path`/`image_prompt`/`im
 
 ## Telegram-интерфейс
 
-**Команды:** стандартные кнопки.
+**Без inline-кнопок** — только текстовые команды в подсказке к сообщению.
 
-**Поиск/генерация placeholder:** `[⏹ Отменить]`.
+**Поиск/генерация placeholder:** «отменить».
 
 **Результаты по режимам:**
-- topic/source/file: `[✅ В работу] [⏭ Пропустить]` + кнопка источника/файла
-- image-generate: `[✅ Сохранить] [🔄 Перегенерировать] [📐 Другой стиль]`
-- **draw**: `[✅ Сохранить] [🔄 Перегенерировать] [🛠 Изменить скрипт]` (последняя → бот показывает скрипт и предлагает отредактировать)
+- topic/source/file: «в работу» · «пропустить» + ссылка/файл текстом
+- image-generate: «сохранить» · «перегенерировать» · «другой стиль»
+- **draw**: «сохранить» · «перегенерировать» · «изменить скрипт»
 
-**Callbacks:**
+**Текстовые команды** (вместо callback):
 - `mat:cancel:<taskName>` — отменить
 - `mat:regen:<id>` — респавн с тем же промптом
 - `mat:restyle:<id>` (image) — спросить стиль → респавн
@@ -239,5 +267,6 @@ materials/
 
 ## Связь с другими скиллами
 
-- **`web-material-finder`** — саб-агент, 5 режимов. `sessions_spawn` с `toolsAllow: ["web_search", "web_fetch", "read_file", "exec", "write", "image_generate"]`.
-- **`note-to-file`** / **`show-ideas`** / **`focus-timer`** — стандартно.
+- **`web-material-finder`** — саб-агент, 5 режимов. Только если `pick`/`today` пуст. `sessions_spawn` с `toolsAllow: ["web_search", "web_fetch", "read_file", "exec", "write", "image_generate"]`.
+- **`daily-plan`** — тема дня для `today`.
+- **`timer`** — зачёт времени на материал.

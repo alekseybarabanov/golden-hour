@@ -13,6 +13,7 @@ import {
   readText,
   isDryRun,
   out,
+  relWorkspacePath,
 } from "./lib/cli.mjs";
 import { listActiveUsers } from "./lib/users.mjs";
 import { buildDailyPlan } from "./lib/daily-plan-engine.mjs";
@@ -36,7 +37,7 @@ for (const { user_key, dir } of users) {
       ok: true,
       skipped: true,
       reason: "plan_exists",
-      path: planPath,
+      path: relWorkspacePath(planPath),
     });
     continue;
   }

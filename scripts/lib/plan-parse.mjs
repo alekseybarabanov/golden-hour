@@ -1,5 +1,7 @@
 // Parse users/<user_key>/plan.md
 
+import fs from "node:fs";
+import path from "node:path";
 import { parseDateOnly, daysBetween, todayISO } from "./dates.mjs";
 
 function parseWeekRange(s) {
@@ -27,7 +29,7 @@ function parseTableRow(line) {
   return cells.length ? cells : null;
 }
 
-export function parsePlanTopics(text) {
+function parsePlanTopicsTable(text) {
   const lines = text.split("\n");
   const topics = [];
   let inTopics = false;
@@ -48,9 +50,11 @@ export function parsePlanTopics(text) {
     const num = cells[0].replace(/\D/g, "");
     const title = cells[1].replace(/\*\*/g, "").trim();
     const level = cells[2]?.replace(/\*\*/g, "").trim() || "medium";
-    const hoursRaw = cells[3]?.replace(/[^\d.]/g, "") || "";
+    const hoursCell = cells.find((c) => /~\d/.test(c)) || cells[4];
+    const hoursRaw = hoursCell?.replace(/[^\d.]/g, "") || "";
     const hours = hoursRaw ? Number(hoursRaw) : null;
-    const weeksCol = cells.find((c) => /\d+\s*[–\-—]/.test(c)) || cells[4];
+    const rangeCells = cells.filter((c) => /\d+\s*[–\-—]\s*\d+/.test(c));
+    const weeksCol = rangeCells.length ? rangeCells[rangeCells.length - 1] : cells[5];
     const weeks = parseWeekRange(weeksCol);
     const difficultyCol = cells[cells.length - 1];
     let difficulty = 3;
@@ -71,6 +75,49 @@ export function parsePlanTopics(text) {
   return topics;
 }
 
+/** Sprint plans: `## Дневной скелет` with `### День N` blocks. */
+export function parseSprintTopics(text) {
+  const lines = text.split("\n");
+  const topics = [];
+  let inSkeleton = false;
+  let dayNum = 0;
+
+  for (const line of lines) {
+    if (/^##\s+Дневной\s+скелет/i.test(line)) {
+      inSkeleton = true;
+      continue;
+    }
+    if (inSkeleton && /^##\s+/.test(line) && !/^###/.test(line)) break;
+    if (!inSkeleton) continue;
+
+    const dayHdr = line.match(/^###\s+День\s+(\d+)/i);
+    if (dayHdr) {
+      dayNum = +dayHdr[1];
+      continue;
+    }
+
+    const item = line.match(/^\d+\.\s+\*\*([^*]+)\*\*\s*\((\d+(?:\.\d+)?)\s*ч\)/);
+    if (!item || !dayNum) continue;
+
+    topics.push({
+      num: topics.length + 1,
+      title: item[1].trim(),
+      level: "medium",
+      hours: +item[2],
+      weeks: { start: dayNum, end: dayNum },
+      difficulty: 3,
+    });
+  }
+
+  return topics;
+}
+
+export function parsePlanTopics(text) {
+  const tableTopics = parsePlanTopicsTable(text);
+  if (tableTopics.length) return tableTopics;
+  return parseSprintTopics(text);
+}
+
 export function parsePlanMeta(text) {
   const meta = {
     created: null,
@@ -84,8 +131,11 @@ export function parsePlanMeta(text) {
   const created = text.match(/Создан:\s*(\d{4}-\d{2}-\d{2})/i);
   if (created) meta.created = created[1];
 
-  const deadline = text.match(/Дедлайн:\s*\*?\*?(\d{4}-\d{2}(?:-\d{2})?)/i);
+  const deadline = text.match(/(?:Дедлайн|Собеседование):\s*\*?\*?(\d{4}-\d{2}(?:-\d{2})?)/i);
   if (deadline) meta.deadline = deadline[1];
+
+  const days = text.match(/Дней до дедлайна:\s*\*?\*?(\d+)/i);
+  if (days) meta.totalDays = +days[1];
 
   const hpw = text.match(/(\d+(?:\.\d+)?)\s*ч\/нед/i);
   if (hpw) meta.hoursPerWeek = +hpw[1];
@@ -107,6 +157,12 @@ export function parsePlanMeta(text) {
 
 export function currentWeekNumber(planText, today) {
   const meta = parsePlanMeta(planText);
+  const sprintTopics = parseSprintTopics(planText);
+  if (sprintTopics.length && meta.created) {
+    const day = daysBetween(meta.created, today);
+    if (day != null && day >= 0) return day + 1;
+  }
+
   let start = meta.planStart || meta.created;
   if (!start) return 1;
 
@@ -116,10 +172,21 @@ export function currentWeekNumber(planText, today) {
 }
 
 export function topicForWeek(topics, weekNum) {
-  for (const t of topics) {
-    if (!t.weeks) continue;
-    if (weekNum >= t.weeks.start && weekNum <= t.weeks.end) return t;
+  const inRange = topics.filter(
+    (t) => t.weeks && weekNum >= t.weeks.start && weekNum <= t.weeks.end
+  );
+  if (inRange.length > 1) {
+    return {
+      title: inRange.map((t) => t.title).join("; "),
+      level: inRange[0].level,
+      hours: inRange.reduce((s, t) => s + (t.hours || 0), 0),
+      weeks: { start: weekNum, end: weekNum },
+      difficulty: Math.max(...inRange.map((t) => t.difficulty || 3)),
+      _sprintItems: inRange,
+    };
   }
+  if (inRange.length === 1) return inRange[0];
+
   if (topics.length && weekNum > 0) {
     const last = topics[topics.length - 1];
     if (last.weeks && weekNum > last.weeks.end) return last;
@@ -141,4 +208,18 @@ export function slugify(s) {
     .replace(/[^a-zа-яё0-9]+/gi, "_")
     .replace(/^_|_$/g, "")
     .slice(0, 40) || "topic";
+}
+
+/** Resolve macro-plan file for user (supports multi-purpose via profile.plan_files). */
+export function resolvePlanPath(userDirPath, profile, { purpose } = {}) {
+  const activePurpose = purpose || profile?.purpose || "exam";
+  const map = profile?.plan_files;
+  if (map && typeof map === "object" && map[activePurpose]) {
+    return path.join(userDirPath, map[activePurpose]);
+  }
+  const named = path.join(userDirPath, `plan-${activePurpose}.md`);
+  if (fs.existsSync(named)) return named;
+  const legacy = path.join(userDirPath, "plans", `${activePurpose}-plan.md`);
+  if (fs.existsSync(legacy)) return legacy;
+  return path.join(userDirPath, "plan.md");
 }

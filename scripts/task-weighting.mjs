@@ -5,7 +5,6 @@
 //   node scripts/task-weighting.mjs --user <user_key> [--date YYYY-MM-DD] [--topic "Title"]
 //   node scripts/task-weighting.mjs weigh --json '{"topics":["A","B"],"profile":{...}}'
 
-import path from "node:path";
 import {
   parseArgs,
   requireUser,
@@ -19,8 +18,6 @@ import {
   weightTopic,
   weightTopics,
   getDailyBudget,
-  computeEffPriority,
-  computeEffDifficulty,
 } from "./lib/task-weighting.mjs";
 import { resolveToday } from "./lib/dates.mjs";
 

@@ -1,14 +1,25 @@
 # Heartbeat — периодические проверки
 
-## Soul Guardian
-- Выполни: `python skills/soul-guardian/scripts/soul_guardian.py check --actor heartbeat --output-format alert`
-- Если есть вывод — это security alert: сообщи владельцу воркспейса (не в Telegram пользователям бота), кратко что изменилось
-- `SOUL.md` и `AGENTS.md` при drift восстанавливаются автоматически (mode: restore)
+## Timer tick (каждые ~1 мин)
+- Выполни: `node scripts/timer-tick.mjs`
+- Если в JSON есть `results` с `notifications` — отправь **один раз** каждому `user_key` поле `message` (без кнопок)
 
-## ClawSec Advisory (лёгкая проверка)
-- Прочитай `skills/clawsec-suite/HEARTBEAT.md` и выполни проверку advisory feed, если прошло >6ч с прошлой проверки
-- При совпадении установленных скиллов с advisory — уведомить владельца, удаление только с явного одобрения
+> Cron: `scripts/cron/register-all-cron.ps1` — morning-plan, morning-brief, **task-pings** (*/5), evening-checkin, timer-tick. Доставка через `cron-deliver.mjs` (без LLM).
 
-## Pomodoro tick
-- Выполни: `node scripts/pomodoro-tick.mjs`
-- Если в JSON есть `results` с `notifications` — отправь соответствующим пользователям `message` + `buttons` из каждого уведомления
+## Check-ins (напоминания по плану)
+Скилл: `skills/checkins/SKILL.md`
+
+| Время (MSK) | Скрипт | Действие |
+|---|---|---|
+| 07:00 | `morning-plan.mjs` | Дневной план для всех `setup_status: complete` (без подтверждения — cron) |
+| 09:00 | `morning-brief.mjs` | Утренний бриф из `plans/<сегодня>.json` (`morning_brief_time`; cron `*/15` 7–10 MSK) |
+| каждые 5 мин | `task-pings.mjs` | Пинги задач по `scheduled_at`, max 3/день |
+| 21:00 | `evening-checkin.mjs` | Вечерний чек-ин (`evening_checkin_time`; cron `*/15` 20–22 MSK) |
+
+**Доставка (бриф / пинги / чек-ин / таймер):** cron запускает `node scripts/cron-deliver.mjs <script>.mjs` — скрипт → JSON → Telegram Bot API (`TELEGRAM_BOT_TOKEN`). Без LLM.
+
+**Ручной fallback (heartbeat):** прочитай JSON скрипта → для каждого `results[].notifications` отправь `message` пользователю `user_key` **дословно**, без дублей. **Без inline-кнопок.** Состояние пингов пишет `task-pings.mjs` (`.ping-state-*.json`); бриф/вечер — `.delivery-state-*.json`.
+
+Без `plans/YYYY-MM-DD.json` — `morning-brief` пропускает пользователя (`skipped: no_plan`).
+
+<!-- Soul Guardian и ClawSec Advisory — только по cron (не дублировать здесь). -->

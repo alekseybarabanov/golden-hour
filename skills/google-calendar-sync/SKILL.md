@@ -81,7 +81,7 @@ node scripts/gcal.mjs <команда> --user <user_key> [опции]
 - ❌ Не хранит токены в общем `USER.md`/репозитории.
 
 ## Зависимости
-- Движок: `scripts/gcal.mjs` (Node ≥ 18). Источники: `daily-plan`, `study-plan`, `current-tasks`.
+- Движок: `scripts/gcal.mjs` (Node ≥ 18). Источники: `daily-plan`, `study-plan`, `tasks`.
 - Настройка приложения: `GOOGLE-CALENDAR.md`.
 
 ## Где живёт реальное исполнение

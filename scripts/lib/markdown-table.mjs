@@ -1,4 +1,12 @@
 // Parse markdown pipe tables from text.
+import { createRequire } from "node:module";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const require = createRequire(import.meta.url);
+const { chunkTableByHeight } = require(
+  path.join(path.dirname(fileURLToPath(import.meta.url)), "../../skills/study-cards/lib/table-layout.js")
+);
 
 function parseRow(line) {
   if (!line.trim().startsWith("|")) return null;
@@ -46,16 +54,7 @@ export function textHasMarkdownTable(text) {
   return extractMarkdownTables(text).length > 0;
 }
 
-/** Split large tables into pages (max rows per PNG). */
-export function chunkTable(table, maxRows = 14) {
-  const chunks = [];
-  for (let i = 0; i < table.rows.length; i += maxRows) {
-    chunks.push({
-      headers: table.headers,
-      rows: table.rows.slice(i, i + maxRows),
-      page: Math.floor(i / maxRows) + 1,
-      pages: Math.ceil(table.rows.length / maxRows),
-    });
-  }
-  return chunks.length ? chunks : [{ headers: table.headers, rows: [], page: 1, pages: 1 }];
+/** Split large tables into pages by estimated PNG height. */
+export function chunkTable(table, maxHeight = 4200, meta = {}) {
+  return chunkTableByHeight(table, maxHeight, meta);
 }

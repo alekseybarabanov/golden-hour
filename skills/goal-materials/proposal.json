@@ -42,7 +42,7 @@
     { "path": "README.md" },
     { "path": "LICENSE" }
   ],
-  "goal": "Библиотека материалов по целям из USER.md с add/pick/search/status, интеграцией в memory/inbox и Telegram inline-кнопками.",
+  "goal": "Библиотека материалов по целям из users/<user_key>/profile.md с add/pick/search/status, CLI goal-materials.mjs, интеграцией в memory/inbox и Telegram inline-кнопками.",
   "evidence": "Запрос пользователя: материалы по предметам с автоподбором, записью в память и кнопками в Telegram.",
   "appliedAt": "2026-06-18T09:50:41.737Z"
 }
