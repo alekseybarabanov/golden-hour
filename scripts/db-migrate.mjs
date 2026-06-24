@@ -1,6 +1,27 @@
 #!/usr/bin/env node
 // db-migrate.mjs — migrate legacy file-based storage into SQLite.
 //
+// ── Что это ──────────────────────────────────────────────────────────────────
+// Скрипт одноразовой (и идемпотентной) миграции из файловых форматов в БД.
+// Переносит:
+//   - users/*/profile.md          → таблица users
+//   - data/teams/*/meta.json      → таблица teams
+//   - data/teams/*/members.json   → таблица team_members
+//   - data/teams/*/tasks.json     → таблица team_tasks
+//   - data/teams/*/invites.json   → таблица team_invites
+//   - data/teams/*/notifications.log → таблица team_notifications
+//
+// ── Когда запускать ───────────────────────────────────────────────────────────
+// 1. При первом деплое на новой машине — перенести данные из старых файлов в DB.
+// 2. После ручного редактирования profile.md — синхронизировать изменения
+//    в DB через --force (иначе loadProfile прочитает старую версию из DB).
+// 3. На демо/тестах — проверить состояние DB командой --status.
+//
+// ── Когда НЕ нужен ────────────────────────────────────────────────────────────
+// Новые пользователи создаются сразу в DB через profile-update.mjs (онбординг).
+// Новые команды создаются через team-tasks.mjs (DB-first).
+// Этот скрипт нужен только для легаси-данных, которые появились до DB.
+//
 // Usage:
 //   node scripts/db-migrate.mjs              # migrate (skip existing records)
 //   node scripts/db-migrate.mjs --dry-run    # preview only, no writes
