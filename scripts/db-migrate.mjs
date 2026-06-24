@@ -1,28 +1,81 @@
 #!/usr/bin/env node
-// db-migrate.mjs — one-time migration from file-based storage to SQLite.
-// Idempotent (INSERT OR IGNORE for existing rows).
+// db-migrate.mjs — migrate legacy file-based storage into SQLite.
 //
 // Usage:
-//   node scripts/db-migrate.mjs [--dry-run]
+//   node scripts/db-migrate.mjs              # migrate (skip existing records)
+//   node scripts/db-migrate.mjs --dry-run    # preview only, no writes
+//   node scripts/db-migrate.mjs --force      # overwrite existing DB records
+//   node scripts/db-migrate.mjs --status     # show current DB contents
 
 import fs from "node:fs";
 import path from "node:path";
 import { parseArgs, isDryRun, WORKSPACE } from "./lib/cli.mjs";
-import { getDb, defaultDbPath, upsertUser, upsertTeam, upsertTeamMember, upsertTeamTask, upsertTeamInvite, appendTeamNotification } from "./lib/db.mjs";
+import {
+  getDb, defaultDbPath,
+  upsertUser, getUser,
+  upsertTeam, getTeam,
+  upsertTeamMember, upsertTeamTask, upsertTeamInvite, appendTeamNotification,
+} from "./lib/db.mjs";
 import { parseProfile } from "./lib/profile.mjs";
 
 const { opts } = parseArgs(process.argv);
 const dryRun = isDryRun(opts);
+const force   = opts.force === "true" || opts.force === true;
+const status  = opts.status === "true" || opts.status === true;
 
 const dbPath = defaultDbPath(WORKSPACE);
+
+// ─── --status: show DB contents ───────────────────────────────────────────────
+
+if (status) {
+  if (!fs.existsSync(dbPath)) {
+    console.log("No DB yet at:", dbPath);
+    process.exit(0);
+  }
+  const db = getDb(dbPath);
+
+  const users = db.prepare("SELECT user_key, setup_status, updated_at FROM users ORDER BY updated_at DESC").all();
+  console.log(`\n── Users (${users.length}) ──────────────────────────────────`);
+  for (const u of users) {
+    const data = JSON.parse(db.prepare("SELECT data FROM users WHERE user_key=?").get(u.user_key)?.data || "{}");
+    console.log(`  ${u.user_key}  [${u.setup_status}]  name=${data.name || "?"}  updated=${u.updated_at?.slice(0,16) || "?"}`);
+  }
+
+  const teams = db.prepare("SELECT team_id, goal, owner_key FROM teams").all();
+  console.log(`\n── Teams (${teams.length}) ──────────────────────────────────`);
+  for (const t of teams) {
+    const members = db.prepare("SELECT count(*) as n FROM team_members WHERE team_id=?").get(t.team_id);
+    const tasks   = db.prepare("SELECT count(*) as n FROM team_tasks WHERE team_id=?").get(t.team_id);
+    console.log(`  ${t.team_id}  goal="${t.goal}"  members=${members.n}  tasks=${tasks.n}`);
+  }
+
+  const taskCount = db.prepare("SELECT count(*) as n FROM user_tasks").get();
+  console.log(`\n── User tasks: ${taskCount.n}`);
+  console.log(`\nDB: ${dbPath}`);
+  process.exit(0);
+}
+
+// ─── Migration ────────────────────────────────────────────────────────────────
+
 const db = dryRun ? null : getDb(dbPath);
 
 let importedUsers = 0;
-let importedTeams = 0;
-let skippedUsers = 0;
-let skippedTeams = 0;
+let skippedUsers  = 0;
+let updatedUsers  = 0;
 
-// ─── Migrate users/*/profile.md ───────────────────────────────────────────────
+let importedTeams = 0;
+let skippedTeams  = 0;
+
+function readJson(p) {
+  try { return JSON.parse(fs.readFileSync(p, "utf8")); } catch { return null; }
+}
+
+function alreadyInDb(table, keyCol, keyVal) {
+  if (!db) return false;
+  return !!db.prepare(`SELECT ${keyCol} FROM ${table} WHERE ${keyCol} = ?`).get(keyVal);
+}
+
+// ─── Users ────────────────────────────────────────────────────────────────────
 
 const usersRoot = path.join(WORKSPACE, "users");
 if (fs.existsSync(usersRoot)) {
@@ -30,71 +83,73 @@ if (fs.existsSync(usersRoot)) {
     if (!entry.isDirectory() || entry.name.startsWith("_") || entry.name.startsWith("archive")) continue;
     const user_key = entry.name;
     const profilePath = path.join(usersRoot, user_key, "profile.md");
+
     if (!fs.existsSync(profilePath)) {
-      console.log(`  skip ${user_key}: no profile.md`);
+      console.log(`  skip  ${user_key}: no profile.md`);
       skippedUsers++;
       continue;
     }
+
     const text = fs.readFileSync(profilePath, "utf8");
     const profile = parseProfile(text);
     if (!profile || Object.keys(profile).length === 0) {
-      console.log(`  skip ${user_key}: empty profile`);
+      console.log(`  skip  ${user_key}: empty profile`);
       skippedUsers++;
       continue;
     }
-    console.log(`  ${dryRun ? "[dry]" : "import"} user ${user_key}: setup_status=${profile.setup_status || "new"}, name=${profile.name || "?"}`);
+
+    const inDb = alreadyInDb("users", "user_key", user_key);
+    if (inDb && !force) {
+      console.log(`  skip  ${user_key}: already in DB (use --force to overwrite)`);
+      skippedUsers++;
+      continue;
+    }
+
+    const verb = dryRun ? "[dry]" : inDb ? "update" : "import";
+    console.log(`  ${verb} user ${user_key}: setup_status=${profile.setup_status || "new"}, name=${profile.name || "?"}`);
+
     if (!dryRun) {
-      // INSERT OR IGNORE — don't overwrite existing DB records
-      const existing = db.prepare("SELECT user_key FROM users WHERE user_key = ?").get(user_key);
-      if (!existing) {
-        upsertUser(db, user_key, profile);
-        importedUsers++;
-      } else {
-        console.log(`    already in DB — skipped`);
-        skippedUsers++;
-      }
+      upsertUser(db, user_key, profile);
+      if (inDb) updatedUsers++; else importedUsers++;
     } else {
       importedUsers++;
     }
   }
 }
 
-// ─── Migrate data/teams/*/  ───────────────────────────────────────────────────
-
-function readJson(p) {
-  try { return JSON.parse(fs.readFileSync(p, "utf8")); } catch { return null; }
-}
+// ─── Teams ────────────────────────────────────────────────────────────────────
 
 const teamsRoot = path.join(WORKSPACE, "data", "teams");
 if (fs.existsSync(teamsRoot)) {
   for (const entry of fs.readdirSync(teamsRoot, { withFileTypes: true })) {
     if (!entry.isDirectory() || !entry.name.startsWith("team-")) continue;
     const teamId = entry.name;
-    const dir = path.join(teamsRoot, teamId);
-    const meta = readJson(path.join(dir, "meta.json"));
+    const dir    = path.join(teamsRoot, teamId);
+    const meta   = readJson(path.join(dir, "meta.json"));
+
     if (!meta?.team_id) {
-      console.log(`  skip team ${teamId}: no meta.json`);
+      console.log(`  skip  team ${teamId}: no meta.json`);
       skippedTeams++;
       continue;
     }
 
-    if (!dryRun) {
-      const existing = db.prepare("SELECT team_id FROM teams WHERE team_id = ?").get(teamId);
-      if (existing) {
-        console.log(`  team ${teamId}: already in DB — skipped`);
-        skippedTeams++;
-        continue;
-      }
+    const inDb = alreadyInDb("teams", "team_id", teamId);
+    if (inDb && !force) {
+      console.log(`  skip  team ${teamId}: already in DB (use --force to overwrite)`);
+      skippedTeams++;
+      continue;
     }
 
-    console.log(`  ${dryRun ? "[dry]" : "import"} team ${teamId}: goal="${meta.goal}"`);
+    const verb = dryRun ? "[dry]" : inDb ? "update" : "import";
+    console.log(`  ${verb} team ${teamId}: goal="${meta.goal}"`);
+
     if (!dryRun) {
       upsertTeam(db, {
-        team_id: meta.team_id,
-        owner_key: meta.owner_user_key,
-        goal: meta.goal,
-        created_at: meta.created_at,
-        owner_telegram_id: meta.owner_telegram_id || null,
+        team_id:            meta.team_id,
+        owner_key:          meta.owner_user_key,
+        goal:               meta.goal,
+        created_at:         meta.created_at,
+        owner_telegram_id:  meta.owner_telegram_id || null,
       });
 
       const membersDoc = readJson(path.join(dir, "members.json"));
@@ -112,14 +167,15 @@ if (fs.existsSync(teamsRoot)) {
         upsertTeamInvite(db, teamId, inv);
       }
 
-      const logPath = path.join(dir, "notifications.log");
-      if (fs.existsSync(logPath)) {
-        const lines = fs.readFileSync(logPath, "utf8").trim().split("\n").filter(Boolean);
-        for (const line of lines) {
-          try {
-            const entry = JSON.parse(line);
-            appendTeamNotification(db, teamId, entry);
-          } catch { /* skip malformed lines */ }
+      // Notifications: only import if the table is empty for this team (avoid duplicates)
+      const existingNotif = db.prepare("SELECT count(*) as n FROM team_notifications WHERE team_id=?").get(teamId);
+      if (existingNotif.n === 0) {
+        const logPath = path.join(dir, "notifications.log");
+        if (fs.existsSync(logPath)) {
+          const lines = fs.readFileSync(logPath, "utf8").trim().split("\n").filter(Boolean);
+          for (const line of lines) {
+            try { appendTeamNotification(db, teamId, JSON.parse(line)); } catch { /* skip malformed */ }
+          }
         }
       }
 
@@ -134,7 +190,10 @@ if (fs.existsSync(teamsRoot)) {
 
 console.log("\n─── Migration summary ───────────────────────────────────");
 if (dryRun) console.log("DRY RUN — no data written");
-console.log(`Users:  imported=${importedUsers}  skipped=${skippedUsers}`);
+console.log(`Users:  imported=${importedUsers}  updated=${updatedUsers}  skipped=${skippedUsers}`);
 console.log(`Teams:  imported=${importedTeams}  skipped=${skippedTeams}`);
-if (!dryRun) console.log(`DB:     ${dbPath}`);
+if (!dryRun) {
+  console.log(`DB:     ${dbPath}`);
+  console.log('\nTip: run with --status to inspect the DB contents');
+}
 console.log("─────────────────────────────────────────────────────────");
