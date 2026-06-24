@@ -33,10 +33,11 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
       # The deploy key in authorized_keys MUST have ForceCommand set to
-      # /opt/golden-hour/deploy/run-deploy.sh (see deploy/setup-server.sh).
-      # This means the SSH session cannot run arbitrary code — it only
-      # triggers the server-side deploy script.
-      - name: Trigger server-side deploy script
+      # /opt/golden-hour/deploy/ssh-deploy-wrapper.sh (see deploy/setup-server.sh).
+      # The SSH session therefore CANNOT run arbitrary code: the wrapper ignores
+      # whatever we send, extracts only a validated commit SHA from it, and runs
+      # the root deploy script via sudo. We send just the SHA below.
+      - name: Trigger server-side deploy
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -46,13 +47,9 @@ jobs:
           port: ${{ secrets.SSH_PORT || 47822 }}
           timeout: 60s
           command_timeout: 10m
-          # With ForceCommand in authorized_keys the server runs run-deploy.sh
-          # regardless of what we pass here. We pass the expected SHA so the
-          # server-side script can verify it and refuse mismatched deploys.
-          script: |
-            DEPLOY_SHA="${{ github.sha }}"
-            export DEPLOY_SHA
-            /opt/golden-hour/deploy/run-deploy.sh "$DEPLOY_SHA"
+          # ForceCommand runs the wrapper regardless of this line; the wrapper
+          # greps the 40-hex SHA out of it and refuses anything else.
+          script: echo "${{ github.sha }}"
 
       - name: Report result
         if: always()

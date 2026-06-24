@@ -5,28 +5,43 @@
 # This file must be:
 #   - Owned by root:  chown root:root /opt/golden-hour/deploy/run-deploy.sh
 #   - Read-only:      chmod 555 /opt/golden-hour/deploy/run-deploy.sh
-#   - Referenced in authorized_keys via ForceCommand so the deploy SSH key
-#     cannot execute arbitrary commands on this server.
 #
-# Setup in /home/<deploy-user>/.ssh/authorized_keys:
-#   command="/opt/golden-hour/deploy/run-deploy.sh",\
-#   no-port-forwarding,no-X11-forwarding,no-agent-forwarding,no-pty \
-#   ssh-ed25519 AAAA... deploy@golden-hour
+# It runs as ROOT (it chowns files, writes /opt and /etc, manages systemd).
+# It is NOT the SSH ForceCommand directly — ssh-deploy-wrapper.sh is, and it
+# calls this script via `sudo`. The deploy SSH key therefore cannot run
+# arbitrary commands: the wrapper only ever invokes this script with a
+# validated commit SHA. See deploy/ssh-deploy-wrapper.sh and setup-server.sh.
+#
+# If invoked as a non-root user, it re-executes itself via sudo (the deploy
+# user is granted NOPASSWD sudo for exactly this path).
 # =============================================================================
 set -euo pipefail
+
+# Re-exec as root if needed (deploy user has NOPASSWD sudo for this exact path).
+if [ "$(id -u)" -ne 0 ]; then
+  exec sudo -n "$0" "$@"
+fi
 
 DEPLOY_PATH="/opt/golden-hour"
 SERVICE_NAME="golden-hour"
 BACKUP_DIR="/var/backups/golden-hour"
 BRANCH="deploy"
+OPENCLAW_DIR="$DEPLOY_PATH/.openclaw"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
 info()  { echo -e "${GREEN}[DEPLOY]${NC} $*"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC}   $*"; }
 error() { echo -e "${RED}[ERROR]${NC}  $*" >&2; }
 
-# Expected commit SHA passed by GitHub Actions (first argument or $DEPLOY_SHA)
+# Expected commit SHA passed by the wrapper (first argument or $DEPLOY_SHA).
+# Empty is allowed ONLY for manual `sudo run-deploy.sh` by an admin (deploys
+# current origin/deploy HEAD). When set it must be an exact 40-hex SHA — this
+# guards against a loose sudoers wildcard passing junk as argv.
 EXPECTED_SHA="${1:-${DEPLOY_SHA:-}}"
+if [ -n "$EXPECTED_SHA" ] && ! [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+  error "Invalid SHA argument: '$EXPECTED_SHA' (expected 40-hex)."
+  exit 2
+fi
 
 # ---- [0] Acquire deploy lock (prevents cron race during deploy) ---------------
 LOCK_FILE="/var/lock/golden-hour-deploy.lock"
@@ -43,19 +58,20 @@ if [ ! -d "$DEPLOY_PATH/.git" ]; then
   exit 1
 fi
 
-# ---- [2] Backup persistent user data before touching the repo ----------------
-info "[2/7] Backing up persistent user data..."
+# ---- [2] Backup persistent data before touching the repo ---------------------
+info "[2/7] Backing up persistent data..."
 mkdir -p "$BACKUP_DIR"
 BACKUP_TS=$(date +%Y%m%d-%H%M%S)
-# Only backup if there is actual user data
-if [ "$(ls -A "$DEPLOY_PATH/users" 2>/dev/null)" ]; then
+# Back up if ANY of users/ data/ memory/ has content — not just users/.
+# (Team data can exist in data/ before any per-user dir is created.)
+if [ -n "$(ls -A "$DEPLOY_PATH/users" "$DEPLOY_PATH/data" "$DEPLOY_PATH/memory" 2>/dev/null)" ]; then
   tar -czf "$BACKUP_DIR/users-$BACKUP_TS.tar.gz" \
     -C "$DEPLOY_PATH" users data memory 2>/dev/null || true
   info "Backup saved: $BACKUP_DIR/users-$BACKUP_TS.tar.gz"
   # Keep only the last 10 backups
   ls -t "$BACKUP_DIR"/users-*.tar.gz 2>/dev/null | tail -n +11 | xargs -r rm --
 else
-  warn "No user data to back up yet."
+  warn "No persistent data to back up yet."
 fi
 
 # ---- [3] Pull code (NEVER touches untracked user data) -----------------------
@@ -89,43 +105,83 @@ chmod -R 750 "$DEPLOY_PATH/scripts" "$DEPLOY_PATH/skills" 2>/dev/null || true
 # Secrets: owner-only (service user golden-hour owns .env)
 chmod 600 "$DEPLOY_PATH/.env" 2>/dev/null || true
 
+# ---- [4b] Re-sync OpenClaw config + systemd unit -----------------------------
+info "[4b/7] Syncing OpenClaw config and systemd unit..."
+# Back up the live config alongside the user-data backup, then re-deploy the
+# committed template. The config has no secrets (only ${ENV} refs), so this is
+# safe to overwrite on every deploy.
+if [ -f "$OPENCLAW_DIR/openclaw.json" ]; then
+  cp "$OPENCLAW_DIR/openclaw.json" "$BACKUP_DIR/openclaw.json.$BACKUP_TS.bak" 2>/dev/null || true
+fi
+install -o golden-hour -g golden-hour -m 640 \
+  "$DEPLOY_PATH/deploy/openclaw.config.json5" "$OPENCLAW_DIR/openclaw.json"
+
+# Keep the installed systemd unit in sync with the repo (e.g. ExecStart changes).
+if ! cmp -s "$DEPLOY_PATH/deploy/service/$SERVICE_NAME.service" \
+            "/etc/systemd/system/$SERVICE_NAME.service"; then
+  cp "$DEPLOY_PATH/deploy/service/$SERVICE_NAME.service" \
+     "/etc/systemd/system/$SERVICE_NAME.service"
+  info "systemd unit updated from repo."
+fi
+
 # ---- [5] Reload systemd and restart with graceful drain ----------------------
 info "[5/7] Restarting service (graceful drain via TimeoutStopSec)..."
-sudo systemctl daemon-reload
+systemctl daemon-reload
 # systemctl restart sends SIGTERM; golden-hour.service has TimeoutStopSec=30
 # to allow in-flight requests to finish before SIGKILL.
-sudo systemctl restart "$SERVICE_NAME"
+systemctl restart "$SERVICE_NAME"
 
 # ---- [6] Health check with retry (detects crash loops) -----------------------
+# A service can flap active↔restarting. Require STABLE_NEEDED consecutive
+# samples that are (a) active and (b) show no new restart vs the previous
+# sample. Comparing each sample to the previous one (not a fixed baseline)
+# correctly tolerates a single early restart while still catching a loop.
 info "[6/7] Waiting for service to become healthy..."
 HEALTHY=false
-RESTARTS_BEFORE=$(sudo systemctl show "$SERVICE_NAME" --property=NRestarts --value 2>/dev/null || echo 0)
+STABLE_NEEDED=3
+stable=0
+PREV_RESTARTS=$(systemctl show "$SERVICE_NAME" --property=NRestarts --value 2>/dev/null || echo 0)
 
 for i in $(seq 1 12); do
   sleep 5
-  if sudo systemctl is-active --quiet "$SERVICE_NAME"; then
-    RESTARTS_AFTER=$(sudo systemctl show "$SERVICE_NAME" --property=NRestarts --value 2>/dev/null || echo 0)
-    if [ "$RESTARTS_AFTER" -gt "$RESTARTS_BEFORE" ]; then
-      warn "Service restarted $((RESTARTS_AFTER - RESTARTS_BEFORE)) time(s) — possible crash loop."
-    else
+  CUR_RESTARTS=$(systemctl show "$SERVICE_NAME" --property=NRestarts --value 2>/dev/null || echo 0)
+  if systemctl is-active --quiet "$SERVICE_NAME" && [ "$CUR_RESTARTS" -le "$PREV_RESTARTS" ]; then
+    stable=$((stable + 1))
+    info "  Attempt $i/12 — active, stable sample $stable/$STABLE_NEEDED."
+    if [ "$stable" -ge "$STABLE_NEEDED" ]; then
       HEALTHY=true
-      info "Service is healthy after ${i} checks (~$((i*5))s)."
+      info "Service is healthy (stable for $STABLE_NEEDED samples, ~$((i*5))s)."
       break
     fi
+  else
+    [ "$CUR_RESTARTS" -gt "$PREV_RESTARTS" ] && warn "  Attempt $i/12 — restart detected (crash loop?)."
+    stable=0
   fi
-  info "  Attempt $i/12 — service not yet active..."
+  PREV_RESTARTS="$CUR_RESTARTS"
 done
 
 if [ "$HEALTHY" != "true" ]; then
   error "Service failed to start. Showing journal:"
-  sudo journalctl -u "$SERVICE_NAME" -n 50 --no-pager || true
+  journalctl -u "$SERVICE_NAME" -n 50 --no-pager || true
 
   # Automatic rollback to previous commit
   if [ -n "$PREV_SHA" ] && [ "$PREV_SHA" != "$NEW_SHA" ]; then
     warn "Rolling back to $PREV_SHA..."
     git reset --hard "$PREV_SHA"
-    sudo systemctl restart "$SERVICE_NAME" || true
-    error "Deployment FAILED. Rolled back to $PREV_SHA."
+    # After the reset, the working tree holds the OLD committed versions of the
+    # config AND the systemd unit. Restore both so we don't run old code under
+    # a new (possibly broken) unit.
+    if [ -f "$DEPLOY_PATH/deploy/openclaw.config.json5" ]; then
+      install -o golden-hour -g golden-hour -m 640 \
+        "$DEPLOY_PATH/deploy/openclaw.config.json5" "$OPENCLAW_DIR/openclaw.json" || true
+    fi
+    if [ -f "$DEPLOY_PATH/deploy/service/$SERVICE_NAME.service" ]; then
+      cp "$DEPLOY_PATH/deploy/service/$SERVICE_NAME.service" \
+         "/etc/systemd/system/$SERVICE_NAME.service" || true
+    fi
+    systemctl daemon-reload || true
+    systemctl restart "$SERVICE_NAME" || true
+    error "Deployment FAILED. Rolled back code, config and unit to $PREV_SHA."
   fi
   exit 1
 fi
