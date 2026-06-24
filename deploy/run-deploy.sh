@@ -114,7 +114,7 @@ if [ -f "$OPENCLAW_DIR/openclaw.json" ]; then
   cp "$OPENCLAW_DIR/openclaw.json" "$BACKUP_DIR/openclaw.json.$BACKUP_TS.bak" 2>/dev/null || true
 fi
 install -o golden-hour -g golden-hour -m 640 \
-  "$DEPLOY_PATH/deploy/openclaw.config.json5" "$OPENCLAW_DIR/openclaw.json"
+  "$DEPLOY_PATH/deploy/openclaw.config.json" "$OPENCLAW_DIR/openclaw.json"
 
 # Keep the installed systemd unit in sync with the repo (e.g. ExecStart changes).
 if ! cmp -s "$DEPLOY_PATH/deploy/service/$SERVICE_NAME.service" \
@@ -171,9 +171,9 @@ if [ "$HEALTHY" != "true" ]; then
     # After the reset, the working tree holds the OLD committed versions of the
     # config AND the systemd unit. Restore both so we don't run old code under
     # a new (possibly broken) unit.
-    if [ -f "$DEPLOY_PATH/deploy/openclaw.config.json5" ]; then
+    if [ -f "$DEPLOY_PATH/deploy/openclaw.config.json" ]; then
       install -o golden-hour -g golden-hour -m 640 \
-        "$DEPLOY_PATH/deploy/openclaw.config.json5" "$OPENCLAW_DIR/openclaw.json" || true
+        "$DEPLOY_PATH/deploy/openclaw.config.json" "$OPENCLAW_DIR/openclaw.json" || true
     fi
     if [ -f "$DEPLOY_PATH/deploy/service/$SERVICE_NAME.service" ]; then
       cp "$DEPLOY_PATH/deploy/service/$SERVICE_NAME.service" \

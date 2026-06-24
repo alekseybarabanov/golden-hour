@@ -165,7 +165,7 @@ fi
 # ---- 8b. OpenClaw config -----------------------------------------------------
 info "[8b/14] Installing OpenClaw config (openclaw.json)..."
 # Config contains NO secrets — only ${ENV} refs resolved at runtime from .env.
-cp "$DEPLOY_PATH/deploy/openclaw.config.json5" "$OPENCLAW_DIR/openclaw.json"
+cp "$DEPLOY_PATH/deploy/openclaw.config.json" "$OPENCLAW_DIR/openclaw.json"
 chown "$BOT_USER:$BOT_USER" "$OPENCLAW_DIR/openclaw.json"
 chmod 640 "$OPENCLAW_DIR/openclaw.json"
 info "Config placed at $OPENCLAW_DIR/openclaw.json"
