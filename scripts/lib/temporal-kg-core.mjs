@@ -113,8 +113,7 @@ function loadIndex(dir) {
 }
 
 function saveIndex(dir, index) {
-  ensureDir(dir);
-  fs.writeFileSync(indexPath(dir), JSON.stringify(index, null, 2) + "\n", "utf8");
+  atomicWriteJson(indexPath(dir), index);
 }
 
 function matchTopicKey(topic, index) {

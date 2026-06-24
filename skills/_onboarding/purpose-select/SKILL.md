@@ -65,7 +65,11 @@ description: "После имени — выбор цели: экзамен / о
 - Поле `purpose` в `users/<user_key>/profile.md` — для дальнейшей персонализации напоминаний и чек-инов
 
 ## Данные
-- `users/<user_key>/profile.md` → поле `purpose` (`exam` / `olympiad` / `topic`)
+Сохранять через:
+```
+node scripts/profile-update.mjs --user <user_key> --set purpose=exam
+```
+(значение: `exam` / `olympiad` / `topic`)
 
 ## Зависимости
 - **Зависит от `hello-intro`** — имя должно быть получено

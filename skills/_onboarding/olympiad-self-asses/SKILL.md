@@ -143,10 +143,11 @@ description: "После предмета — что уже знаешь и на
 - Не показывает карту «не того» предмета — всегда читать `olympiad_subject` из `users/<user_key>/profile.md`
 
 ## Данные
-- `users/<user_key>/profile.md` → одно или несколько:
-  - `olympiad_level: novice|medium|advanced|top`
-  - `olympiad_levels: {тема: уровень, ...}`
-  - `olympiad_level_note: <текст>`
+Сохранять через `--patch`:
+```
+node scripts/profile-update.mjs --user <user_key> --patch '{"olympiad_level":"medium","olympiad_levels":{"Алгебра":"medium","Комбинаторика":"weak"}}'
+# опционально: добавить "olympiad_level_note":"<текст>"
+```
 
 ## Зависимости
 - Зависит от `olympiad-subject`

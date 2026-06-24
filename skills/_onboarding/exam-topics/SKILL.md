@@ -104,7 +104,10 @@ description: "Темы экзамена (карта или список юзер
 | Карта + дополнения | объединить → `exam_topics_source: mixed` |
 
 ## Данные
-- `users/<user_key>/profile.md` → `exam_topics: [...]`, `exam_topics_source: codifier|user|mixed`
+Сохранять через `--patch` (темы — массив JSON):
+```
+node scripts/profile-update.mjs --user <user_key> --patch '{"exam_topics":["Алгебра","Геометрия"],"exam_topics_source":"codifier"}'
+```
 
 ## Зависимости
 - Зависит от `exam-subject`

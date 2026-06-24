@@ -81,8 +81,10 @@ export function readJson(p, fallback = null) {
 }
 
 export function writeJson(p, obj) {
+  const tmp = `${p}.tmp`;
   fs.mkdirSync(path.dirname(p), { recursive: true });
-  fs.writeFileSync(p, JSON.stringify(obj, null, 2) + "\n", "utf8");
+  fs.writeFileSync(tmp, JSON.stringify(obj, null, 2) + "\n", "utf8");
+  fs.renameSync(tmp, p);
 }
 
 export function writeText(p, text) {

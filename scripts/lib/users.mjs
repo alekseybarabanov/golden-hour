@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { WORKSPACE } from "./cli.mjs";
 import { loadProfile, getSetupStatus } from "./profile.mjs";
+import { getDb, listActiveUsers as dbListActiveUsers, dbExists, defaultDbPath } from "./db.mjs";
 
 export function listUserDirs(readText = (p) => {
   try {
@@ -25,6 +26,17 @@ export function listUserDirs(readText = (p) => {
 }
 
 export function listActiveUsers(readText) {
+  // DB-first
+  const dbPath = defaultDbPath(WORKSPACE);
+  if (dbExists(dbPath)) {
+    const db = getDb(dbPath);
+    return dbListActiveUsers(db).map(({ user_key, profile }) => ({
+      user_key,
+      dir: path.join(WORKSPACE, "users", user_key),
+      profile,
+    }));
+  }
+  // File fallback
   const users = [];
   for (const { user_key, dir } of listUserDirs(readText)) {
     const { exists, profile } = loadProfile(dir, readText);

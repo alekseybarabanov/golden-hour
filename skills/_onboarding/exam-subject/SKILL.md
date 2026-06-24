@@ -54,7 +54,11 @@ description: "После типа экзамена — предмет. Блок 
 **ЕГЭ математика:** если пользователь сразу пишет «профиль» / «база» — записать `exam_subject_variant: profile|base`.
 
 ## Данные
-- `users/<user_key>/profile.md` → `exam_subject`, опционально `exam_subject_note`, `exam_subject_variant`
+Сохранять через:
+```
+node scripts/profile-update.mjs --user <user_key> --set exam_subject=math
+# опционально: --set exam_subject_note="<текст>" --set exam_subject_variant=profile
+```
 
 ## Зависимости
 - Зависит от `exam-type`

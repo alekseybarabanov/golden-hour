@@ -78,3 +78,8 @@ venv/
 
 # Node
 node_modules/
+
+# SQLite database (user data — not committed)
+*.db
+*.db-wal
+*.db-shm

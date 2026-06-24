@@ -88,7 +88,11 @@ description: "Завершает онбординг: спрашивает дед
 | «не нужен календарь» | `calendar: skipped`, продолжить без него |
 
 ## Данные
-- `users/<user_key>/profile.md` → `deadline`, `hours_per_week`, `priorities`, `daily_load`, (опц.) `difficulty`, `setup_status: complete`, `calendar: connected|skipped`
+Сохранять финальный профиль через `--patch` (все поля сразу):
+```
+node scripts/profile-update.mjs --user <user_key> --patch '{"deadline":"2027-06","hours_per_week":5,"priorities":{"Геометрия":5,"Алгебра":3},"daily_load":"normal","setup_status":"complete","calendar":"skipped"}'
+# опционально: добавить "difficulty":{"Геометрия":4}
+```
 
 ## Зависимости
 - После ветки самооценки.

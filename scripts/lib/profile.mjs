@@ -1,4 +1,10 @@
 // Parse users/<user_key>/profile.md (semi-structured markdown).
+// loadProfile() is DB-first: if golden-hour.db exists in the workspace, reads from it;
+// otherwise falls back to profile.md file parsing (legacy).
+
+import fs from "node:fs";
+import path from "node:path";
+import { getDb, getUser } from "./db.mjs";
 
 function parseScalar(raw) {
   const s = raw.trim();
@@ -104,8 +110,23 @@ export function parseProfile(text) {
 }
 
 export function loadProfile(userDir, readText) {
+  // DB-first: if golden-hour.db exists in workspace, read from it
+  const absDir = path.resolve(userDir);
+  const workspace = path.dirname(path.dirname(absDir));
+  const dbPath = path.join(workspace, "golden-hour.db");
+  if (fs.existsSync(dbPath)) {
+    const user_key = path.basename(absDir);
+    try {
+      const db = getDb(dbPath);
+      const profile = getUser(db, user_key);
+      if (profile) return { exists: true, path: `[db:${user_key}]`, profile };
+    } catch {
+      // fall through to file
+    }
+  }
+  // File fallback (legacy)
   const p = `${userDir}/profile.md`;
-  const text = readText(p);
+  const text = typeof readText === "function" ? readText(p) : null;
   if (!text) return { exists: false, path: p, profile: null };
   return { exists: true, path: p, profile: parseProfile(text) };
 }

@@ -44,8 +44,11 @@ description: "После выбора «тема» — уточнить, что 
 | Конкретная тема | Принять как `study_topic` |
 
 ## Данные
-- `users/<user_key>/profile.md` → `study_topic` (дословно)
-- опционально `study_subject`, `study_topic_scope`
+Сохранять через:
+```
+node scripts/profile-update.mjs --user <user_key> --set study_topic="Интегралы"
+# опционально: --set study_subject=math --set study_topic_scope=intro
+```
 
 ## Зависимости
 - Зависит от `purpose-select` (purpose = `topic`)

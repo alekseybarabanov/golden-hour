@@ -50,7 +50,10 @@ description: "После выбора олимпиады — уточнить к
 - Не выбирает класс за пользователя (переиспользование старого профиля решает `session-start`)
 
 ## Данные
-- `users/<user_key>/profile.md` → `grade: <7|8|9|10|11|graduate>`
+Сохранять через:
+```
+node scripts/profile-update.mjs --user <user_key> --set grade=11
+```
 
 ## Зависимости
 - Зависит от `purpose-select` (`purpose` = `olympiad`)

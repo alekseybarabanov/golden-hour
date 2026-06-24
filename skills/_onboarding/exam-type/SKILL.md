@@ -40,7 +40,11 @@ description: "После выбора экзамена — уточнить ти
 | `4` / `другой` | `other` | Спросить: «Какой экзамен?» → `exam_type_note` |
 
 ## Данные
-- `users/<user_key>/profile.md` → `exam_type`, опционально `exam_type_note`
+Сохранять через:
+```
+node scripts/profile-update.mjs --user <user_key> --set exam_type=ege
+# если "другой": добавить --set exam_type_note="<текст>"
+```
 
 ## Зависимости
 - Зависит от `purpose-select` (purpose = `exam`)
