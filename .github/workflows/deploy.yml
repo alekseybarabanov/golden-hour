@@ -5,7 +5,7 @@ on:
     branches:
       - deploy
 
-# Only one deployment at a time
+# Only one deployment at a time; never cancel an in-flight deploy
 concurrency:
   group: production
   cancel-in-progress: false
@@ -22,20 +22,21 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Validate secrets
+      - name: Validate required secrets
         run: |
-          : "${SERVER_HOST:?'SECRET SERVER_HOST is not set'}"
-          : "${SERVER_USER:?'SECRET SERVER_USER is not set'}"
-          : "${SSH_PRIVATE_KEY:?'SECRET SSH_PRIVATE_KEY is not set'}"
+          : "${SERVER_HOST:?'Set SERVER_HOST in repository Secrets'}"
+          : "${SERVER_USER:?'Set SERVER_USER in repository Secrets'}"
+          : "${SSH_PRIVATE_KEY:?'Set SSH_PRIVATE_KEY in repository Secrets'}"
         env:
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
           SERVER_USER: ${{ secrets.SERVER_USER }}
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Deploy via SSH
+      # The deploy key in authorized_keys MUST have ForceCommand set to
+      # /opt/golden-hour/deploy/run-deploy.sh (see deploy/setup-server.sh).
+      # This means the SSH session cannot run arbitrary code — it only
+      # triggers the server-side deploy script.
+      - name: Trigger server-side deploy script
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -45,54 +46,19 @@ jobs:
           port: ${{ secrets.SSH_PORT || 47822 }}
           timeout: 60s
           command_timeout: 10m
+          # With ForceCommand in authorized_keys the server runs run-deploy.sh
+          # regardless of what we pass here. We pass the expected SHA so the
+          # server-side script can verify it and refuse mismatched deploys.
           script: |
-            set -euo pipefail
+            DEPLOY_SHA="${{ github.sha }}"
+            export DEPLOY_SHA
+            /opt/golden-hour/deploy/run-deploy.sh "$DEPLOY_SHA"
 
-            echo "=== [1/5] Checking deploy directory ==="
-            if [ ! -d "${{ env.DEPLOY_PATH }}" ]; then
-              echo "ERROR: Deploy path ${{ env.DEPLOY_PATH }} does not exist."
-              echo "Run deploy/setup-server.sh first."
-              exit 1
-            fi
-
-            echo "=== [2/5] Pulling latest code (user data is safe — it is .gitignored) ==="
-            cd "${{ env.DEPLOY_PATH }}"
-            git fetch origin deploy
-            # Reset only tracked files — untracked user data in users/ and data/ is NOT touched
-            git checkout deploy
-            git reset --hard origin/deploy
-            # Explicitly forbid cleaning untracked files to protect user data
-            echo "Skipping git clean — user data in users/ and data/ preserved."
-
-            echo "=== [3/5] Setting file permissions ==="
-            chmod -R 750 scripts/ skills/ || true
-            chmod 640 .env 2>/dev/null || true
-
-            echo "=== [4/5] Reloading systemd and restarting service ==="
-            sudo systemctl daemon-reload
-            sudo systemctl restart "${{ env.SERVICE_NAME }}"
-
-            echo "=== [5/5] Verifying service health ==="
-            sleep 5
-            if sudo systemctl is-active --quiet "${{ env.SERVICE_NAME }}"; then
-              echo "Service ${{ env.SERVICE_NAME }} is running."
-            else
-              echo "ERROR: Service failed to start. Showing journal:"
-              sudo journalctl -u "${{ env.SERVICE_NAME }}" -n 50 --no-pager
-              exit 1
-            fi
-
-      - name: Notify success
-        if: success()
+      - name: Report result
+        if: always()
         run: |
-          echo "Deployment completed successfully."
-          echo "Branch: ${{ github.ref_name }}"
-          echo "Commit: ${{ github.sha }}"
-          echo "Actor:  ${{ github.actor }}"
-
-      - name: Notify failure
-        if: failure()
-        run: |
-          echo "DEPLOYMENT FAILED."
-          echo "Branch: ${{ github.ref_name }}"
-          echo "Commit: ${{ github.sha }}"
+          STATUS="${{ job.status }}"
+          echo "Deploy status : $STATUS"
+          echo "Branch        : ${{ github.ref_name }}"
+          echo "Commit SHA    : ${{ github.sha }}"
+          echo "Triggered by  : ${{ github.actor }}"

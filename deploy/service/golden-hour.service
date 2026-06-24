@@ -11,12 +11,12 @@ Group=golden-hour
 WorkingDirectory=/opt/golden-hour
 
 # --- Environment ---
-# Copy .env.example to /opt/golden-hour/.env and fill in secrets
+# Copy deploy/.env.example to /opt/golden-hour/.env (chmod 600, owned by golden-hour)
 EnvironmentFile=-/opt/golden-hour/.env
 
-# Non-standard ports — override in .env
+# Non-standard ports — override in /opt/golden-hour/.env
 # APP_PORT     = internal health/API port (default 47832)
-# WEBHOOK_PORT = Telegram webhook port if not using long-poll (default 47843)
+# WEBHOOK_PORT = Telegram webhook if not using long-poll (must be 443/80/88/8443 or via reverse proxy)
 Environment=NODE_ENV=production
 Environment=APP_PORT=47832
 Environment=WEBHOOK_PORT=47843
@@ -24,25 +24,39 @@ Environment=TZ=Europe/Moscow
 
 # --- Run ---
 ExecStart=/usr/local/bin/openclaw gateway
-ExecReload=/bin/kill -HUP $MAINPID
+
+# Do NOT use ExecReload — OpenClaw's SIGHUP behaviour is unverified.
+# Use 'systemctl restart golden-hour' for all updates.
+# ExecReload=/bin/kill -HUP $MAINPID
 
 # --- Restart policy ---
 Restart=always
 RestartSec=10s
+# After 5 crashes within 120s, systemd stops restarting (prevents infinite loop).
+# Monitor with: journalctl -u golden-hour -f
+# Alert on failure via: systemctl status golden-hour
 StartLimitIntervalSec=120s
 StartLimitBurst=5
 
+# Graceful shutdown: give in-flight requests time to finish (writes must be
+# atomic: write to .tmp then rename() to prevent partial-write corruption).
+TimeoutStopSec=30s
+
 # --- Resource limits ---
-# Protect against runaway memory (adjust to your VPS size)
+# Node.js uses several threads (libuv threadpool + GC + main). 64 is too low.
+# Profile actual usage; 256 is a safe default for a multi-user Node bot.
 MemoryMax=512M
-TasksMax=64
+MemoryHigh=400M
+TasksMax=256
 LimitNOFILE=65536
 
 # --- Hardening ---
 NoNewPrivileges=yes
 ProtectSystem=strict
-# Allow writing only to the project dir and /tmp
-ReadWritePaths=/opt/golden-hour /tmp
+# Allow writing only to project dir; PrivateTmp gives its own /tmp already.
+# Do NOT add /tmp here — PrivateTmp already provides a private writable /tmp,
+# and adding /tmp to ReadWritePaths would re-open the real shared /tmp.
+ReadWritePaths=/opt/golden-hour
 PrivateTmp=yes
 ProtectHome=yes
 ProtectKernelTunables=yes
