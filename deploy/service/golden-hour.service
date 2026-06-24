@@ -1,0 +1,55 @@
+[Unit]
+Description=Golden Hour Study Bot (OpenClaw Gateway)
+Documentation=https://github.com/margoshkagt-star/Golden-Hour
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=golden-hour
+Group=golden-hour
+WorkingDirectory=/opt/golden-hour
+
+# --- Environment ---
+# Copy .env.example to /opt/golden-hour/.env and fill in secrets
+EnvironmentFile=-/opt/golden-hour/.env
+
+# Non-standard ports — override in .env
+# APP_PORT     = internal health/API port (default 47832)
+# WEBHOOK_PORT = Telegram webhook port if not using long-poll (default 47843)
+Environment=NODE_ENV=production
+Environment=APP_PORT=47832
+Environment=WEBHOOK_PORT=47843
+Environment=TZ=Europe/Moscow
+
+# --- Run ---
+ExecStart=/usr/local/bin/openclaw gateway
+ExecReload=/bin/kill -HUP $MAINPID
+
+# --- Restart policy ---
+Restart=always
+RestartSec=10s
+StartLimitIntervalSec=120s
+StartLimitBurst=5
+
+# --- Resource limits ---
+# Protect against runaway memory (adjust to your VPS size)
+MemoryMax=512M
+TasksMax=64
+LimitNOFILE=65536
+
+# --- Hardening ---
+NoNewPrivileges=yes
+ProtectSystem=strict
+# Allow writing only to the project dir and /tmp
+ReadWritePaths=/opt/golden-hour /tmp
+PrivateTmp=yes
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+
+[Install]
+WantedBy=multi-user.target
