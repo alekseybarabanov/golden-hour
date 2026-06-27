@@ -48,7 +48,7 @@
 
 ```powershell
 $ws = "$env:USERPROFILE\.openclaw\workspaces\golden-hour"
-git clone https://github.com/YOUR_USERNAME/golden-hour.git $ws
+git clone https://github.com/svirepymedved/golden-hour.git $ws
 cd $ws
 ```
 
@@ -56,7 +56,7 @@ cd $ws
 
 ```bash
 mkdir -p ~/.openclaw/workspaces
-git clone https://github.com/YOUR_USERNAME/golden-hour.git ~/.openclaw/workspaces/golden-hour
+git clone https://github.com/svirepymedved/golden-hour.git ~/.openclaw/workspaces/golden-hour
 cd ~/.openclaw/workspaces/golden-hour
 ```
 

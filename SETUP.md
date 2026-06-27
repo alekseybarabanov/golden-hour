@@ -21,7 +21,7 @@
 ## 2. Клонирование и установка воркспейса
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/golden-hour.git golden-hour
+git clone https://github.com/svirepymedved/golden-hour.git golden-hour
 ```
 
 **Linux / macOS:**
@@ -35,7 +35,7 @@ cp -r golden-hour ~/.openclaw/workspaces/golden-hour
 
 ```powershell
 $ws = "$env:USERPROFILE\.openclaw\workspaces\golden-hour"
-git clone https://github.com/YOUR_USERNAME/golden-hour.git $ws
+git clone https://github.com/svirepymedved/golden-hour.git $ws
 ```
 
 > Можно клонировать сразу в целевую папку — главное, чтобы путь совпал с `workspace` в `openclaw.json`.
