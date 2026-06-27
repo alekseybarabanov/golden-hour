@@ -20,6 +20,7 @@ import {
 import { loadProfile, getSetupStatus } from "./lib/profile.mjs";
 import { resolveToday } from "./lib/dates.mjs";
 import { appendCheckin, planDayStats } from "./lib/progress-core.mjs";
+import { hookCheckinRecorded } from "./lib/kg-hooks.mjs";
 
 const { opts } = parseArgs(process.argv);
 const userKey = requireUser(opts);
@@ -54,6 +55,15 @@ if (!dryRun && !duplicate) {
   writeText(progressPath, text);
 }
 
+let kg = null;
+if (!dryRun && !duplicate) {
+  try {
+    kg = hookCheckinRecorded(dir, { text: bullet.trim(), date });
+  } catch {
+    kg = { ok: false, error: "kg_hook_failed" };
+  }
+}
+
 out({
   user_key: userKey,
   date,
@@ -61,6 +71,7 @@ out({
   duplicate,
   streak,
   plan_stats: stats,
+  kg,
   progress_path: relWorkspacePath(progressPath),
   summary: duplicate
     ? "Запись за этот день уже есть — дубликат не добавлен."

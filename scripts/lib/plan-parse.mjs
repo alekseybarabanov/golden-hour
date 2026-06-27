@@ -50,11 +50,13 @@ function parsePlanTopicsTable(text) {
     const num = cells[0].replace(/\D/g, "");
     const title = cells[1].replace(/\*\*/g, "").trim();
     const level = cells[2]?.replace(/\*\*/g, "").trim() || "medium";
-    const hoursCell = cells.find((c) => /~\d/.test(c)) || cells[4];
+    const hoursCell = cells[3] || cells.find((c) => /~\d/.test(c)) || cells[4];
     const hoursRaw = hoursCell?.replace(/[^\d.]/g, "") || "";
     const hours = hoursRaw ? Number(hoursRaw) : null;
     const rangeCells = cells.filter((c) => /\d+\s*[–\-—]\s*\d+/.test(c));
-    const weeksCol = rangeCells.length ? rangeCells[rangeCells.length - 1] : cells[5];
+    const weeksCol = rangeCells.length
+      ? rangeCells[rangeCells.length - 1]
+      : cells[4] || cells[5];
     const weeks = parseWeekRange(weeksCol);
     const difficultyCol = cells[cells.length - 1];
     let difficulty = 3;

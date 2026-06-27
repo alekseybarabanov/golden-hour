@@ -28,7 +28,6 @@ users/<user_key>/
   plan.md         # макро-план подготовки (недели/месяцы)
   progress.md     # дневник чек-инов, streak, закрытые темы
   tasks.md        # активные задачи
-  teams.json      # индекс команд пользователя (team-tasks)
   temporal-kg/    # граф событий (events.jsonl, edges.jsonl, topic-index.json)
   google-calendar.json  # OAuth refresh-токен + карта uid→eventId (ПРИВАТНО, не коммитить)
   plans/
@@ -36,8 +35,6 @@ users/<user_key>/
 ```
 
 Создавать папку и файлы лениво — при первой записи. Никогда не перезаписывать `USER.md`/`MEMORY.md` воркспейса данными конкретного пользователя.
-
-**Командные таски:** общая БД команд — `data/teams/<team_id>/` (в gitignore); у пользователя только индекс `teams.json`. Подробности — `skills/team-tasks/SKILL.md`.
 
 ## `profile.md` — шаблон
 

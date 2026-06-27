@@ -8,13 +8,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import {
-  parseArgs,
-  readText,
-  readJson,
-  writeJson,
-  out,
-} from "./lib/cli.mjs";
+import { parseArgs, readText, readJson, out } from "./lib/cli.mjs";
 import { listActiveUsers } from "./lib/users.mjs";
 import { resolveToday } from "./lib/dates.mjs";
 import {
@@ -23,7 +17,7 @@ import {
   selectDueTasks,
   goalForTask,
   buildPingMessage,
-  commitPingIfNew,
+  wasPingedForTrigger,
 } from "./lib/task-pings-core.mjs";
 import { normalizePlan } from "./lib/plan-utils.mjs";
 
@@ -101,21 +95,10 @@ for (const { user_key, dir, profile } of listActiveUsers((p) => readText(p))) {
   const goal = goalForTask(plan, pick.task);
   const message = buildPingMessage(pick.task, goal);
 
-  let notifications = [];
-  let committed = false;
-  if (!dryRun) {
-    const reserved = commitPingIfNew(state, {
-      taskId: pick.task.id,
-      triggerMs: pick.triggerMs,
-      date,
-    });
-    state = reserved.state;
-    if (reserved.committed) {
-      writeJson(statePath, state);
-      committed = true;
-      notifications = [{ template: "task-ping", message, buttons: null }];
-    }
-  }
+  const notifications =
+    dryRun || !wasPingedForTrigger(state, pick.task.id, pick.triggerMs)
+      ? [{ template: "task-ping", message, buttons: null }]
+      : [];
 
   results.push({
     user_key,
@@ -123,7 +106,6 @@ for (const { user_key, dir, profile } of listActiveUsers((p) => readText(p))) {
     task_id: pick.task.id,
     trigger_at: pick.triggerMs,
     pings_today: state.count || pingsToday,
-    committed,
     notifications,
   });
 }

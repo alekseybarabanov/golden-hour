@@ -10,6 +10,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs, out, die, WORKSPACE } from "./lib/cli.mjs";
 import { deliverFromPayload } from "./lib/telegram-deliver.mjs";
+import { alertCronFailure } from "./lib/cron-alert.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -39,7 +40,14 @@ const run = spawnSync(process.execPath, [scriptPath, ...scriptArgs], {
 });
 
 if (run.status !== 0) {
-  die(run.stderr?.trim() || `script failed: ${scriptRel}`, {
+  const errText = run.stderr?.trim() || `script failed: ${scriptRel}`;
+  await alertCronFailure({
+    script: scriptRel,
+    error: errText,
+    exit_code: run.status,
+    stdout: run.stdout?.trim() || null,
+  });
+  die(errText, {
     exit_code: run.status,
     stdout: run.stdout?.trim() || null,
   });
@@ -54,6 +62,11 @@ try {
 }
 
 if (payload.ok === false) {
+  await alertCronFailure({
+    script: scriptRel,
+    error: payload.error || "payload ok:false",
+    stdout: JSON.stringify(payload).slice(0, 500),
+  });
   process.stdout.write(JSON.stringify(payload) + "\n");
   process.exit(1);
 }

@@ -2,7 +2,7 @@
 
 ИИ-агент для подготовки к **олимпиадам / экзаменам / темам**: знакомится, **запоминает каждого пользователя в отдельной папке**, строит план, ведёт прогресс, напоминает в Telegram.
 
-> **Установка:** [SETUP.md](SETUP.md) (ветка **`agent-install`** — рекомендуется).
+> **Установка:** [INSTALL.md](INSTALL.md) — полная инструкция (агент, дашборд, Mini App, cron). Кратко: [SETUP.md](SETUP.md).
 
 ## Что внутри
 
@@ -10,7 +10,7 @@
 |---|---|
 | `SOUL.md` | Главная логика агента — грузится в каждой сессии |
 | `skills/` | Дизайн-документы скиллов |
-| `scripts/` | Детерминированные скрипты (Node ≥18, без npm) |
+| `scripts/` | Детерминированные скрипты (Node ≥18; `npm install` только для экспериментального SQLite `GH_USE_DB=1`) |
 | `openclaw.agent.example.json` | Фрагмент конфига OpenClaw для Telegram-бота |
 | `users/_example/` | Шаблон структуры данных пользователя |
 
@@ -35,7 +35,6 @@ session-start
 | `tasks` | Задачи, recurring, decompose |
 | `timer` | Помодоро + focus |
 | `cards` | План и таблицы → PNG |
-| `team-tasks` / `telegram-group` | Командная работа |
 | `goal-materials` | Материалы по цели |
 | `longterm-stats` / `temporal-kg` | Статистика и история |
 | `google-calendar-sync` | Календарь |
@@ -59,6 +58,22 @@ node scripts/run-tests.mjs
 ```
 
 Полный список: [scripts/README.md](scripts/README.md).
+
+**PNG-карточки** (`table-cards`, `study-plan-cards`) требуют Chrome/Edge/Chromium на хосте (см. `skills/study-cards/`).
+
+## Статус компонентов
+
+| Статус | Компоненты |
+|---|---|
+| **Live** | onboarding, study/daily-plan, checkins, timer, cards, goal-materials, temporal-kg (авто-emit), student-portal, google-calendar-sync |
+| **Experimental** | `GH_USE_DB=1` (SQLite), `google-task-hub` (альтернатива локальным tasks) |
+| **Archived** | `team-tasks`, `telegram-group` — см. `_archived/` |
+
+## CI
+
+```bash
+node scripts/run-tests.mjs   # 71+ unit-тестов; GitHub Actions: .github/workflows/test-golden-hour.yml
+```
 
 ## Отдельные киты (`kits/`)
 

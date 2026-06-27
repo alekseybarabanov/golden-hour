@@ -1,11 +1,13 @@
 // team-tasks.mjs — team orchestration: membership, invites, shared tasks.
-// All timestamps UTC ISO-8601 (+00:00). Storage: SQLite (DB-first), file fallback.
+// All timestamps UTC ISO-8601 (+00:00). Storage: data/teams/<id>/*.json (default).
+// Optional SQLite when GH_USE_DB=1 and golden-hour.db exists.
 
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { WORKSPACE, readJson, writeJson } from "./cli.mjs";
 import {
+  isDbEnabled,
   getDb,
   dbExists,
   defaultDbPath,
@@ -51,8 +53,8 @@ export function userTeamsPath(userKey, workspace = WORKSPACE) {
   return path.join(workspace, "users", userKey, "teams.json");
 }
 
-// Returns a DB connection for the workspace, or null if no DB exists yet.
 function _db(workspace) {
+  if (!isDbEnabled()) return null;
   const dbPath = defaultDbPath(workspace);
   if (dbExists(dbPath)) return getDb(dbPath);
   return null;
@@ -713,13 +715,13 @@ function getTask(tasksDoc, taskId) {
   return task;
 }
 
-function getTaskOrDb(db, teamId, taskId, workspace) {
+function getTaskOrDb(db, teamId, taskId, tasksDoc) {
   if (db) {
     const t = getTeamTaskById(db, teamId, taskId);
     if (!t) throw new TeamError("task not found", { task_id: taskId });
     return t;
   }
-  return getTask(loadTasks(teamId, workspace), taskId);
+  return getTask(tasksDoc, taskId);
 }
 
 function saveTask(db, teamId, task, tasksDoc, workspace) {
@@ -734,7 +736,7 @@ export function takeTask({ userKey, teamId, taskId, telegramId, workspace = WORK
   assertMember(teamId, userKey, workspace);
   const db = _db(workspace);
   const tasksDoc = db ? null : loadTasks(teamId, workspace);
-  const task = getTaskOrDb(db, teamId, taskId, workspace);
+  const task = getTaskOrDb(db, teamId, taskId, tasksDoc);
   if (task.status !== "planned" && task.status !== "blocked") {
     throw new TeamError("task not available to take", { task_id: taskId, status: task.status });
   }
@@ -764,7 +766,7 @@ export function submitTask({ userKey, teamId, taskId, note, workspace = WORKSPAC
   assertMember(teamId, userKey, workspace);
   const db = _db(workspace);
   const tasksDoc = db ? null : loadTasks(teamId, workspace);
-  const task = getTaskOrDb(db, teamId, taskId, workspace);
+  const task = getTaskOrDb(db, teamId, taskId, tasksDoc);
   if (task.assignee_user_key !== userKey) {
     throw new TeamError("only assignee can submit", { task_id: taskId });
   }
@@ -793,7 +795,7 @@ export function approveTask({ userKey, teamId, taskId, workspace = WORKSPACE }) 
   assertOwner(teamId, userKey, workspace);
   const db = _db(workspace);
   const tasksDoc = db ? null : loadTasks(teamId, workspace);
-  const task = getTaskOrDb(db, teamId, taskId, workspace);
+  const task = getTaskOrDb(db, teamId, taskId, tasksDoc);
   if (task.status !== "awaiting_review") {
     throw new TeamError("task not awaiting review", { task_id: taskId, status: task.status });
   }
@@ -817,7 +819,7 @@ export function reopenTask({ userKey, teamId, taskId, reason, workspace = WORKSP
   assertOwner(teamId, userKey, workspace);
   const db = _db(workspace);
   const tasksDoc = db ? null : loadTasks(teamId, workspace);
-  const task = getTaskOrDb(db, teamId, taskId, workspace);
+  const task = getTaskOrDb(db, teamId, taskId, tasksDoc);
   if (task.status !== "awaiting_review") {
     throw new TeamError("only awaiting_review can be reopened", { task_id: taskId, status: task.status });
   }
@@ -836,7 +838,7 @@ export function blockTask({ userKey, teamId, taskId, reason, workspace = WORKSPA
   assertMember(teamId, userKey, workspace);
   const db = _db(workspace);
   const tasksDoc = db ? null : loadTasks(teamId, workspace);
-  const task = getTaskOrDb(db, teamId, taskId, workspace);
+  const task = getTaskOrDb(db, teamId, taskId, tasksDoc);
   if (task.status === "done") throw new TeamError("cannot block done task", { task_id: taskId });
   task.status = "blocked";
   task.blocked_reason = reason?.trim() || "blocked";
@@ -848,7 +850,7 @@ export function unblockTask({ userKey, teamId, taskId, workspace = WORKSPACE }) 
   assertMember(teamId, userKey, workspace);
   const db = _db(workspace);
   const tasksDoc = db ? null : loadTasks(teamId, workspace);
-  const task = getTaskOrDb(db, teamId, taskId, workspace);
+  const task = getTaskOrDb(db, teamId, taskId, tasksDoc);
   if (task.status !== "blocked") throw new TeamError("task not blocked", { task_id: taskId });
   task.status = task.assignee_user_key ? "in_progress" : "planned";
   task.blocked_reason = null;

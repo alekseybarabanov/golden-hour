@@ -10,7 +10,7 @@
 //   again            — новая focus-сессия по той же задаче
 //   stats            — статистика
 //   schedule         — предложить расписание
-//   schedule-confirm — применить предложенное расписание (юзер нажал "Подтвердить")
+//   schedule-confirm — применить предложенное расписание (текст «подтверждаю»)
 //
 // Остальное (variants list, mark-dialog, schedule-cancel) — на лету через
 // pomodoro-core.mjs или прямую правку файла. Не дублируем в CLI.
@@ -47,6 +47,7 @@ import { addTimeSpentMinutes, markTaskDone } from "./lib/tasks-core.mjs";
 import { resolveToday } from "./lib/dates.mjs";
 import { creditPlanTask } from "./lib/plan-task-core.mjs";
 import { normalizePlan } from "./lib/plan-utils.mjs";
+import { hookTimerCredit } from "./lib/kg-hooks.mjs";
 import {
   parseVariantInput,
   cmdStart,
@@ -195,6 +196,19 @@ function creditFocus(timerDir, userDirPath, opts) {
   const mins =
     session.credited_minutes || session.elapsed_minutes || session.phase_duration_minutes || 0;
   const planMsg = credited.find((c) => c.message)?.message;
+
+  let kg = null;
+  try {
+    kg = hookTimerCredit(userDirPath, {
+      topic: session.window_topic || session.task_title,
+      minutes: mins,
+      taskId: taskId || session.task_id,
+      mode: session.mode || "focus",
+    });
+  } catch {
+    kg = { ok: false, error: "kg_hook_failed" };
+  }
+
   return {
     ok: true,
     action: "credited",
@@ -202,6 +216,7 @@ function creditFocus(timerDir, userDirPath, opts) {
     task_id: taskId || null,
     minutes: mins,
     credited,
+    kg,
     message: planMsg || `Засчитал ${mins} мин фокуса.`,
     summary: `Focus засчитан (${mins} мин).`,
   };

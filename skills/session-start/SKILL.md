@@ -29,7 +29,6 @@ description: "Первый шаг каждой новой сессии: опре
 node scripts/session-start.mjs --user <user_key> [--telegram-id <id>] [--username @x]
 node scripts/session-start.mjs --owner    # для webchat владельца (user_key=owner)
 ```
-При наличии `telegram_id` скрипт автоматически резолвит pending-инвайты (`team-tasks`). Если `team_invites.count > 0` — сообщить пользователю, в какие команды он вступил.
 
 ## Логика
 

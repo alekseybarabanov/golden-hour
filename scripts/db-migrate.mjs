@@ -1,8 +1,10 @@
 #!/usr/bin/env node
-// db-migrate.mjs — migrate legacy file-based storage into SQLite.
+// db-migrate.mjs — migrate file-based storage into SQLite (experimental, opt-in).
+// Requires: npm install && GH_USE_DB=1
 //
-// ── Что это ──────────────────────────────────────────────────────────────────
-// Скрипт одноразовой (и идемпотентной) миграции из файловых форматов в БД.
+// Default storage is files (users/*/profile.md, data/teams/). This script is for
+// a future DB rollout — not needed in normal operation.
+//
 // Переносит:
 //   - users/*/profile.md          → таблица users
 //   - data/teams/*/meta.json      → таблица teams
@@ -10,17 +12,6 @@
 //   - data/teams/*/tasks.json     → таблица team_tasks
 //   - data/teams/*/invites.json   → таблица team_invites
 //   - data/teams/*/notifications.log → таблица team_notifications
-//
-// ── Когда запускать ───────────────────────────────────────────────────────────
-// 1. При первом деплое на новой машине — перенести данные из старых файлов в DB.
-// 2. После ручного редактирования profile.md — синхронизировать изменения
-//    в DB через --force (иначе loadProfile прочитает старую версию из DB).
-// 3. На демо/тестах — проверить состояние DB командой --status.
-//
-// ── Когда НЕ нужен ────────────────────────────────────────────────────────────
-// Новые пользователи создаются сразу в DB через profile-update.mjs (онбординг).
-// Новые команды создаются через team-tasks.mjs (DB-first).
-// Этот скрипт нужен только для легаси-данных, которые появились до DB.
 //
 // Usage:
 //   node scripts/db-migrate.mjs              # migrate (skip existing records)
@@ -30,12 +21,17 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { parseArgs, isDryRun, WORKSPACE } from "./lib/cli.mjs";
+import { parseArgs, isDryRun, die, WORKSPACE } from "./lib/cli.mjs";
 import {
-  getDb, defaultDbPath,
-  upsertUser, getUser,
-  upsertTeam, getTeam,
-  upsertTeamMember, upsertTeamTask, upsertTeamInvite, appendTeamNotification,
+  isDbEnabled,
+  getDb,
+  defaultDbPath,
+  upsertUser,
+  upsertTeam,
+  upsertTeamMember,
+  upsertTeamTask,
+  upsertTeamInvite,
+  appendTeamNotification,
 } from "./lib/db.mjs";
 import { parseProfile } from "./lib/profile.mjs";
 
@@ -44,16 +40,32 @@ const dryRun = isDryRun(opts);
 const force   = opts.force === "true" || opts.force === true;
 const status  = opts.status === "true" || opts.status === true;
 
+if (!isDbEnabled() && !status) {
+  die("sqlite_disabled", {
+    hint:
+      "SQLite is off. Data stays in users/ and data/teams/. " +
+      "To migrate later: npm install && GH_USE_DB=1 && node scripts/db-migrate.mjs",
+  });
+}
+
 const dbPath = defaultDbPath(WORKSPACE);
 
 // ─── --status: show DB contents ───────────────────────────────────────────────
 
 if (status) {
+  if (!isDbEnabled()) {
+    console.log("SQLite disabled (GH_USE_DB not set). Data is in users/ and data/teams/.");
+    process.exit(0);
+  }
   if (!fs.existsSync(dbPath)) {
     console.log("No DB yet at:", dbPath);
     process.exit(0);
   }
   const db = getDb(dbPath);
+  if (!db) {
+    console.log("SQLite unavailable. Run: npm install && GH_USE_DB=1");
+    process.exit(1);
+  }
 
   const users = db.prepare("SELECT user_key, setup_status, updated_at FROM users ORDER BY updated_at DESC").all();
   console.log(`\n── Users (${users.length}) ──────────────────────────────────`);

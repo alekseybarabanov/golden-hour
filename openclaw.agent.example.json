@@ -6,10 +6,41 @@
         "name": "golden-hour",
         "workspace": "~/.openclaw/workspaces/golden-hour",
         "model": "your-provider/your-model",
+        "subagents": {
+          "allowAgents": ["code-writer"],
+          "requireAgentId": true
+        },
+        "tools": {
+          "alsoAllow": ["sessions_send", "sessions_list"]
+        },
         "identity": {
           "name": "Золотой час",
           "emoji": "🌅",
           "avatar": "avatars/golden-hour-variant-1.png"
+        }
+      },
+      {
+        "id": "code-writer",
+        "name": "code-writer",
+        "workspace": "~/.openclaw/workspace-code",
+        "model": "your-provider/your-model",
+        "tools": {
+          "profile": "coding",
+          "deny": [
+            "message",
+            "cron",
+            "sessions_spawn",
+            "sessions_list",
+            "sessions_send",
+            "image_generate",
+            "music_generate",
+            "video_generate"
+          ]
+        },
+        "identity": {
+          "name": "Code-Writer",
+          "emoji": "💻",
+          "theme": "Изолированный генератор кода для golden-hour"
         }
       }
     ]
@@ -53,7 +84,8 @@
             { "command": "calendar", "description": "Google Calendar: подключение и синхронизация" },
             { "command": "materials", "description": "Материалы по цели" },
             { "command": "profile", "description": "Просмотр и правка профиля" },
-            { "command": "help", "description": "Что умеет бот" }
+            { "command": "help", "description": "Что умеет бот" },
+            { "command": "web", "description": "Личный кабинет в браузере (LAN/Wi‑Fi)" }
           ]
         }
       }

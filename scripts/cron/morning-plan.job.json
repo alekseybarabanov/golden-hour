@@ -9,7 +9,7 @@
   "payload": {
     "kind": "command",
     "argv": ["sh", "-lc", "node scripts/morning-plan.mjs"],
-    "cwd": "C:\\Users\\screa\\.openclaw\\workspaces\\golden-hour"
+    "cwd": "~/.openclaw/workspaces/golden-hour"
   },
   "delivery": {
     "mode": "none"

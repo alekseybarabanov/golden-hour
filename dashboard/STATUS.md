@@ -1,12 +1,12 @@
 # Dashboard — статус проекта
 
-**Файл:** `C:\Users\Admin\.openclaw\workspace\dashboard\STATUS.md`
-**Обновлено:** 2026-06-23
+**Файл:** `dashboard/STATUS.md`  
+**Обновлено:** 2026-06-27
 **Решение:** **Вариант C (гибрид)** · шапка **Фельпик** ⚙️
 
 ---
 
-## Решения Карима
+## Решения по архитектуре
 
 | Вопрос | Ответ |
 |--------|--------|
@@ -29,7 +29,7 @@
 ### Grafana (локально)
 
 ```powershell
-cd C:\Users\Admin\.openclaw\workspace\dashboard\grafana
+cd dashboard\grafana
 .\start_grafana.ps1
 # Dashboard: http://127.0.0.1:3000/d/openclaw-overview/openclaw-overview
 
@@ -45,7 +45,7 @@ openclaw gateway restart   # после diagnostics-prometheus
 
 - KPI-шапка: Agents, Crons, Cost Today, System
 - Roster из `openclaw.json` (Фельпик, Золотой час, Skill Forge, …)
-- Kanban Tasks (batch / approval / todo / progress / done / archive)
+- Kanban Tasks (todo / progress / done / archive)
 - Вкладка **Costs** — переключатель **Встроенный** ↔ **Grafana** (выбор сохраняется в браузере)
 - Вкладка **Tools** — ссылки на Control UI и Claw Dash
 - Backend: `agents_roster`, `costs`, `portal` в `/api/snapshot`
@@ -68,7 +68,7 @@ openclaw gateway restart   # после diagnostics-prometheus
 ## Запуск
 
 ```powershell
-cd C:\Users\Admin\.openclaw\workspace\dashboard
+cd dashboard
 .\start_dashboard.ps1
 # → http://127.0.0.1:18790/
 ```

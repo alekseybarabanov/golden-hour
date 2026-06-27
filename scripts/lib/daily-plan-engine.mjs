@@ -58,6 +58,50 @@ function collectPurposeBlock(userDirPath, profile, purpose, date) {
   };
 }
 
+function cleanTag(raw) {
+  return String(raw || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-zа-яё0-9_-]+/gi, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 28);
+}
+
+function taskTag(task) {
+  const explicit = cleanTag(task.tag);
+  if (explicit) return explicit;
+  const kind = cleanTag(task.kind);
+  if (kind) return kind;
+  const purpose = cleanTag(task._purpose);
+  if (purpose) return purpose;
+  return "study";
+}
+
+function taskFocus(title) {
+  return String(title || "")
+    .replace(/^(Теория|Практика|Карточки|Изучение|Закрепление)\s*[:—-]\s*/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function taskDescription(task) {
+  const focus = taskFocus(task.title) || "учебная задача";
+  const minutes = Number(task.est_minutes || 0);
+  const timePart = minutes ? `План: ${minutes} минут.` : "План: один учебный блок.";
+  const difficulty = Number(task.eff_difficulty || task.difficulty || 0);
+  const difficultyPart = difficulty ? `Сложность ${difficulty}/5.` : "";
+  const kind = String(task.kind || "").toLowerCase();
+  const action = {
+    theory: "Разобрать материал, выписать ключевые определения и один короткий пример своими словами.",
+    practice: "Решить задания по теме, отметить ошибки и сформулировать, какой прием нужно повторить.",
+    cards: "Собрать или повторить карточки с формулами, фактами и типовыми ловушками по теме.",
+    review: "Повторить тему по памяти, закрыть пробелы и проверить себя на коротком примере.",
+    recurring: "Выполнить регулярную учебную привычку и зафиксировать результат.",
+    buffer: "Сделать легкий восстановительный повтор, чтобы закрепить тяжелые блоки дня.",
+  }[kind] || "Выполнить учебный блок и зафиксировать понятный результат.";
+  return `${action} Фокус: ${focus}. ${timePart} ${difficultyPart}`.replace(/\s+/g, " ").trim();
+}
+
 export function buildDailyPlan(userKey, userDirPath, date, { dryRun = false, purpose } = {}) {
   const { exists, profile } = loadProfile(userDirPath, (p) => readText(p));
   if (!exists) {
@@ -143,6 +187,7 @@ export function buildDailyPlan(userKey, userDirPath, date, { dryRun = false, pur
     id: `t_${String(taskNum++).padStart(3, "0")}`,
     goal_id: t._goalId || goals[0].id,
     title: t.title,
+    description: taskDescription(t),
     scheduled_at: t.scheduled_at,
     est_minutes: t.est_minutes,
     weight: t.eff_priority,
@@ -150,7 +195,7 @@ export function buildDailyPlan(userKey, userDirPath, date, { dryRun = false, pur
     difficulty: t.eff_difficulty,
     status: "planned",
     snoozed_until: null,
-    ...(t.tag ? { tag: t.tag } : {}),
+    tag: taskTag(t),
     ...(t._purpose ? { purpose: t._purpose } : {}),
   }));
 

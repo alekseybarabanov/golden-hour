@@ -1,0 +1,25 @@
+name: Test Golden Hour
+
+on:
+  push:
+    branches: [main, master, agent-install, deploy]
+  pull_request:
+
+jobs:
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run unit tests
+        run: node scripts/run-tests.mjs
+
+      - name: Smoke CLI
+        run: |
+          node scripts/exam-topics.mjs list
+          node scripts/cleanup-cards.mjs --dry-run

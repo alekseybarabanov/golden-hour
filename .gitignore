@@ -76,6 +76,22 @@ skills/study-cards/users/
 
 # Logs
 *.log
+*.out.log
+*.err.log
+
+# Runtime / portal state (local only)
+dashboard/.portal-state.json
+dashboard/.portal-watchdog.pid
+dashboard/.portal-*.pid
+
+# Dev scratch / patches
+patch*.json
+scripts/_tmp_*
+scripts/regen-task-descriptions.mjs
+
+# Generated presentations (not part of agent)
+presentation/*.pptx
+presentation/index6.pptx
 
 # Python
 __pycache__/

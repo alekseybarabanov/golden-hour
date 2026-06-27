@@ -1,10 +1,10 @@
 // Parse users/<user_key>/profile.md (semi-structured markdown).
-// loadProfile() is DB-first: if golden-hour.db exists in the workspace, reads from it;
-// otherwise falls back to profile.md file parsing (legacy).
+// loadProfile() reads users/<user_key>/profile.md (authoritative).
+// Optional SQLite (GH_USE_DB=1) — experimental, not used by default.
 
 import fs from "node:fs";
 import path from "node:path";
-import { getDb, getUser } from "./db.mjs";
+import { isDbEnabled, getDb, getUser } from "./db.mjs";
 
 function parseScalar(raw) {
   const s = raw.trim();
@@ -131,21 +131,21 @@ export function parseProfile(text) {
 }
 
 export function loadProfile(userDir, readText) {
-  // DB-first: if golden-hour.db exists in workspace, read from it
-  const absDir = path.resolve(userDir);
-  const workspace = path.dirname(path.dirname(absDir));
-  const dbPath = path.join(workspace, "golden-hour.db");
-  if (fs.existsSync(dbPath)) {
-    const user_key = path.basename(absDir);
-    try {
-      const db = getDb(dbPath);
-      const profile = getUser(db, user_key);
-      if (profile) return { exists: true, path: `[db:${user_key}]`, profile };
-    } catch {
-      // fall through to file
+  if (isDbEnabled()) {
+    const absDir = path.resolve(userDir);
+    const workspace = path.dirname(path.dirname(absDir));
+    const dbPath = path.join(workspace, "golden-hour.db");
+    if (fs.existsSync(dbPath)) {
+      const user_key = path.basename(absDir);
+      try {
+        const db = getDb(dbPath);
+        const profile = db ? getUser(db, user_key) : null;
+        if (profile) return { exists: true, path: `[db:${user_key}]`, profile };
+      } catch {
+        // fall through to file
+      }
     }
   }
-  // File fallback (legacy)
   const p = `${userDir}/profile.md`;
   const text = typeof readText === "function" ? readText(p) : null;
   if (!text) return { exists: false, path: p, profile: null };
@@ -296,4 +296,127 @@ export function getLevelMap(profile) {
     return { [main]: profile.topic_level || "medium" };
   }
   return {};
+}
+
+function escapeRegExp(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function isProfileSubLine(line) {
+  return /^\s{2,}/.test(line) && line.trim() !== "";
+}
+
+/** Serialize one scalar for `- **key:** value` lines. */
+export function formatProfileScalar(value) {
+  if (value === null || value === undefined) return "null";
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (typeof value === "number") return String(value);
+  if (typeof value === "string") {
+    if (value.startsWith("[") && value.endsWith("]")) return value;
+    return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+  }
+  if (Array.isArray(value)) {
+    if (!value.length) return "[]";
+    return JSON.stringify(value).replace(/"/g, '"');
+  }
+  if (typeof value === "object") {
+    return JSON.stringify(value);
+  }
+  return String(value);
+}
+
+/** One profile field block (markdown). */
+export function formatProfileField(key, value) {
+  if (value === null || value === undefined) {
+    return `- **${key}:** null`;
+  }
+  if (Array.isArray(value)) {
+    if (!value.length) return `- **${key}:** []`;
+    const items = value.map((v) => {
+      const s = formatProfileScalar(v);
+      return `  - ${s.startsWith('"') ? s : `"${v}"`}`;
+    });
+    return `- **${key}:**\n${items.join("\n")}`;
+  }
+  if (typeof value === "object" && !Array.isArray(value)) {
+    const items = Object.entries(value).map(
+      ([k, v]) => `  - "${k}": ${formatProfileScalar(v)}`
+    );
+    return `- **${key}:**\n${items.join("\n")}`;
+  }
+  return `- **${key}:** ${formatProfileScalar(value)}`;
+}
+
+function findFieldBlock(lines, key) {
+  const re = new RegExp(`^-\\s+\\*\\*${escapeRegExp(key)}:\\*\\*\\s*(.*)$`);
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(re);
+    if (!m) continue;
+    let end = i + 1;
+    if (m[1].trim() === "") {
+      while (end < lines.length) {
+        const line = lines[end];
+        if (line.trim() === "" || line.startsWith("<!--")) {
+          end++;
+          continue;
+        }
+        if (isProfileSubLine(line)) {
+          end++;
+          continue;
+        }
+        break;
+      }
+    }
+    return { start: i, end };
+  }
+  return null;
+}
+
+/** Patch profile.md in place; preserves unrelated sections and comments. */
+export function patchProfileMarkdown(text, patch) {
+  const lines = (text || "").replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").split("\n");
+  const touched = [];
+
+  for (const [key, value] of Object.entries(patch)) {
+    const block = formatProfileField(key, value).split("\n");
+    const span = findFieldBlock(lines, key);
+    if (span) {
+      lines.splice(span.start, span.end - span.start, ...block);
+    } else {
+      const insertAt = lines.length && lines[lines.length - 1].trim() === "" ? lines.length : lines.length;
+      if (insertAt > 0 && lines[insertAt - 1]?.trim() !== "") lines.push("");
+      lines.push(...block);
+    }
+    touched.push(key);
+  }
+
+  const out = lines.join("\n");
+  return { text: out.endsWith("\n") ? out : out + "\n", updated: touched };
+}
+
+export function mergeProfile(base, patch) {
+  const next = { ...(base || {}) };
+  for (const [key, value] of Object.entries(patch || {})) {
+    if (
+      value &&
+      typeof value === "object" &&
+      !Array.isArray(value) &&
+      next[key] &&
+      typeof next[key] === "object" &&
+      !Array.isArray(next[key])
+    ) {
+      next[key] = { ...next[key], ...value };
+    } else {
+      next[key] = value;
+    }
+  }
+  return next;
+}
+
+export function createProfileMarkdown(profile, { title } = {}) {
+  const name = title || profile?.name || "пользователь";
+  const header = `# Профиль — ${name}\n\n`;
+  const keys = Object.keys(profile || {});
+  const body = keys.map((k) => formatProfileField(k, profile[k])).join("\n");
+  return header + body + "\n";
 }

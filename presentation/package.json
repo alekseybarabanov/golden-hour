@@ -4,10 +4,20 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "export:pptx": "node export-pptx.mjs",
+    "export:index6": "node export-index6-pptx.mjs",
+    "export:pdf": "node export-pdf.mjs",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "type": "module",
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs"
+  "dependencies": {
+    "canvas": "^3.2.3",
+    "cheerio": "^1.2.0",
+    "pdf-parse": "^2.4.5",
+    "pdfjs-dist": "^6.0.227",
+    "pptxgenjs": "^4.0.1"
+  }
 }

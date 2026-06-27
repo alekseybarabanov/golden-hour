@@ -82,6 +82,18 @@ openclaw cron add `
   --no-deliver `
   --json
 
+Write-Host "=== cleanup-cards weekly (no deliver) ==="
+Remove-JobByName "golden-hour-cleanup-cards"
+openclaw cron add `
+  --name golden-hour-cleanup-cards `
+  --cron "0 3 * * 0" `
+  --tz Europe/Moscow `
+  --session isolated `
+  --command "node scripts/cleanup-cards.mjs --keep 20" `
+  --command-cwd $workspace `
+  --no-deliver `
+  --json
+
 Write-Host ""
 Write-Host "Done. Token: TELEGRAM_BOT_TOKEN env or ~/.openclaw/secrets.json (channels.telegram.golden-hour.botToken)."
 Write-Host "Verify: openclaw cron list"

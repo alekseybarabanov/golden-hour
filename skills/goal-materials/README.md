@@ -84,7 +84,7 @@ materials/
 
 ## Telegram (текстовые команды)
 
-Inline-кнопки **не используются**. Подсказки в тексте сообщения — см. `SKILL.md` и `references/tg-buttons.md` (legacy, deprecated).
+Inline-кнопки **не используются**. Подсказки в тексте сообщения — см. `SKILL.md`. Legacy: `_archived/goal-materials-legacy/tg-buttons.md`.
 
 Основные команды:
 - `pick` → «в работу» · «не понял» · «пропустить»

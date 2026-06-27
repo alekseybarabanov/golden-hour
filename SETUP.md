@@ -1,6 +1,6 @@
 # SETUP — как запустить агента «Золотой час»
 
-Ветка **`agent-install`** — полный дистрибутив для самостоятельной установки: воркспейс OpenClaw, скиллы, детерминированные скрипты, шаблоны данных.
+> **Полная инструкция:** [INSTALL.md](INSTALL.md) — агент, дашборд, Mini App, cron, Google Calendar.
 
 Агент знакомится с пользователем, **запоминает каждого в отдельной папке**, строит план подготовки, ведёт прогресс и напоминает в Telegram.
 
@@ -21,7 +21,7 @@
 ## 2. Клонирование и установка воркспейса
 
 ```bash
-git clone -b agent-install https://github.com/margoshkagt-star/Golden-Hour.git golden-hour
+git clone https://github.com/YOUR_USERNAME/golden-hour.git golden-hour
 ```
 
 **Linux / macOS:**
@@ -35,7 +35,7 @@ cp -r golden-hour ~/.openclaw/workspaces/golden-hour
 
 ```powershell
 $ws = "$env:USERPROFILE\.openclaw\workspaces\golden-hour"
-git clone -b agent-install https://github.com/margoshkagt-star/Golden-Hour.git $ws
+git clone https://github.com/YOUR_USERNAME/golden-hour.git $ws
 ```
 
 > Можно клонировать сразу в целевую папку — главное, чтобы путь совпал с `workspace` в `openclaw.json`.
@@ -77,6 +77,12 @@ Copy-Item secrets.example.json "$env:USERPROFILE\.openclaw\secrets.json"
 ---
 
 ## 5. Проверка скриптов
+
+```powershell
+node scripts/run-tests.mjs
+node scripts/exam-topics.mjs list
+node scripts/profile-patch.mjs --user local-test --init --set name=Test --set setup_status=in_progress --dry-run
+```
 
 ```powershell
 cd "$env:USERPROFILE\.openclaw\workspaces\golden-hour"
@@ -141,7 +147,22 @@ pip install matplotlib graphviz schemdraw
 
 ---
 
-## 9. Google Calendar (опционально)
+## 10. Личный кабинет (student portal)
+
+**Рекомендуемый путь:** Telegram Mini App — кнопка **🌅 Кабинет** в меню бота (HTTPS через tunnel). См. `dashboard/TELEGRAM_MINIAPP.md`.
+
+**Fallback (LAN):** тот же Wi‑Fi, что и ПК с OpenClaw:
+```powershell
+cd dashboard
+.\start_student_portal.ps1
+# пользователю: node scripts/student-portal.mjs --user <key> → portal_url
+```
+
+Не работает в guest Wi‑Fi / изолированных сетях — включите хотспот на ПК (`hotspot_url` в JSON портала).
+
+---
+
+## 11. Google Calendar (опционально)
 
 Пошаговая инструкция: **[GOOGLE-CALENDAR.md](GOOGLE-CALENDAR.md)**.
 
@@ -178,7 +199,7 @@ golden-hour/
 
 **Онбординг:** `skills/onboarding/SKILL.md`
 
-**Рабочий режим:** `study-plan`, `daily-plan`, `checkins`, `tasks`, `timer`, `cards`, `longterm-stats`, `goal-materials`, `google-calendar-sync`, `team-tasks`, `telegram-group`, `temporal-kg`, `help-menu`
+**Рабочий режим:** `study-plan`, `daily-plan`, `checkins`, `tasks`, `timer`, `cards`, `longterm-stats`, `goal-materials`, `google-calendar-sync`, `temporal-kg`, `help-menu`
 
 ---
 
@@ -201,7 +222,7 @@ golden-hour/
 
 ```powershell
 cd "$env:USERPROFILE\.openclaw\workspaces\golden-hour"
-git pull origin agent-install
+git pull
 openclaw gateway restart
 ```
 

@@ -2,7 +2,7 @@
 // session-start.mjs — determine user phase and profile snapshot.
 //
 // Usage:
-//   node scripts/session-start.mjs --user <user_key> [--telegram-id N] [--username @x] [--group <chat_id>]
+//   node scripts/session-start.mjs --user <user_key> [--telegram-id N] [--username @x]
 //   node scripts/session-start.mjs --owner   # принудительно user_key=owner (для webchat)
 //
 // Output: { ok, status, profile_summary, paths, actions, proactive_message }
@@ -19,7 +19,6 @@ import {
   readText,
   relWorkspacePath,
   out,
-  die,
 } from "./lib/cli.mjs";
 import {
   loadProfile,
@@ -27,8 +26,6 @@ import {
   getTopicsFromProfile,
 } from "./lib/profile.mjs";
 import { kgDir } from "./lib/temporal-kg-core.mjs";
-import { resolvePendingInvites } from "./lib/team-tasks.mjs";
-import { groupContext, resolvePendingGroupInvites } from "./lib/group-core.mjs";
 import {
   detectCurrentStep,
   buildOnboardingProgress,
@@ -42,47 +39,6 @@ const { opts } = parseArgs(process.argv);
 const userKey = opts.owner === "true" ? "owner" : requireUser(opts);
 const dir = userDir(userKey);
 const { exists, profile } = loadProfile(dir, (p) => readText(p));
-
-const telegramId = opts["telegram-id"] || opts.telegramId || null;
-const telegramUsername = opts.username || null;
-const groupChatId = opts.group || opts["chat-id"] || opts.chatId || null;
-
-function resolveGroupInvites() {
-  if (!telegramId && !telegramUsername) return null;
-  try {
-    return resolvePendingGroupInvites({
-      userKey,
-      chatId: groupChatId,
-      telegramId: telegramId ? Number(telegramId) : null,
-      username: telegramUsername,
-    });
-  } catch {
-    return { count: 0, resolved: [], error: true };
-  }
-}
-
-function resolveTeamInvites() {
-  if (!telegramId && !telegramUsername) return null;
-  try {
-    return resolvePendingInvites({
-      userKey,
-      telegramId: telegramId ? Number(telegramId) : null,
-      username: telegramUsername,
-    });
-  } catch {
-    return { accepted: [], count: 0, error: true };
-  }
-}
-
-const teamInvitesResolveCmd =
-  telegramId || telegramUsername
-    ? `node scripts/team-tasks.mjs invites resolve --user ${userKey}${telegramId ? ` --telegram-id ${telegramId}` : ""}${telegramUsername ? ` --username ${telegramUsername}` : ""}`
-    : null;
-
-const groupInvitesResolveCmd =
-  telegramId || telegramUsername
-    ? `node scripts/group-invites-resolve.mjs --user ${userKey}${groupChatId ? ` --chat-id ${groupChatId}` : ""}${telegramId ? ` --telegram-id ${telegramId}` : ""}${telegramUsername ? ` --username ${telegramUsername}` : ""}`
-    : null;
 
 // Owner detection: user_key === "owner" (или начинается с "owner-")
 const isOwner = userKey === "owner" || userKey.startsWith("owner-");
@@ -168,8 +124,6 @@ function buildProactiveMessage(scenario, context) {
 }
 
 if (!exists) {
-  const team_invites = resolveTeamInvites();
-  const group_invites = resolveGroupInvites();
   const proactive_message = buildProactiveMessage("A", { user_key: userKey });
   out({
     user_key: userKey,
@@ -179,11 +133,6 @@ if (!exists) {
     message: "Новый пользователь — запустить hello-intro",
     proactive_message,
     paths: { profile: relWorkspacePath(path.join(dir, "profile.md")) },
-    team_invites,
-    team_invites_resolve_cmd: teamInvitesResolveCmd,
-    group_invites,
-    group_invites_resolve_cmd: groupInvitesResolveCmd,
-    group: groupChatId ? groupContext(groupChatId, userKey) : null,
   });
   process.exit(0);
 }
@@ -224,9 +173,6 @@ if (setupStatus === "complete" && files.progress) {
     kg_import_recommended = true;
   }
 }
-
-const team_invites = resolveTeamInvites();
-const group_invites = resolveGroupInvites();
 
 let materials_today = null;
 let daily_plan_cmd = null;
@@ -305,11 +251,6 @@ out({
   kg_import_cmd: kg_import_recommended
     ? `node scripts/temporal-kg.mjs import-progress --user ${userKey}`
     : null,
-  team_invites,
-  team_invites_resolve_cmd: teamInvitesResolveCmd,
-  group_invites,
-  group_invites_resolve_cmd: groupInvitesResolveCmd,
-  group: groupChatId ? groupContext(groupChatId, userKey) : null,
   proactive_message,
   ...(setupStatus === "complete"
     ? {

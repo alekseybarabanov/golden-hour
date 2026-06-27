@@ -1,16 +1,28 @@
-// db.mjs — SQLite persistence layer (better-sqlite3).
-// Single source of truth for users, tasks, and team data.
+// db.mjs — SQLite persistence layer (better-sqlite3), opt-in only.
+// Default storage is files (users/*/profile.md, data/teams/). Enable with GH_USE_DB=1
+// after `npm install` in the workspace root.
 
-import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
 import { WORKSPACE } from "./cli.mjs";
 
 const DEFAULT_DB = path.join(WORKSPACE, "golden-hour.db");
 
+/** SQLite is experimental; off until explicitly enabled. */
+export function isDbEnabled() {
+  const v = process.env.GH_USE_DB;
+  return v === "1" || v === "true";
+}
+
+let Database = null;
+if (isDbEnabled()) {
+  Database = (await import("better-sqlite3")).default;
+}
+
 const _dbs = new Map();
 
 export function getDb(dbPath = DEFAULT_DB) {
+  if (!isDbEnabled() || !Database) return null;
   if (!_dbs.has(dbPath)) {
     const db = new Database(dbPath);
     db.pragma("journal_mode = WAL");
@@ -22,7 +34,7 @@ export function getDb(dbPath = DEFAULT_DB) {
 }
 
 export function dbExists(dbPath = DEFAULT_DB) {
-  return fs.existsSync(dbPath);
+  return isDbEnabled() && fs.existsSync(dbPath);
 }
 
 export function defaultDbPath(workspace = WORKSPACE) {
@@ -303,8 +315,16 @@ export function getUserTeams(db, user_key) {
 // ─── Team Tasks ───────────────────────────────────────────────────────────────
 
 export function upsertTeamTask(db, team_id, task) {
-  const { id, status = "planned", assignee, created_at, ...rest } = task;
+  const {
+    id,
+    status = "planned",
+    assignee_user_key,
+    assignee,
+    created_at,
+    ...rest
+  } = task;
   if (!id) throw new Error("task.id required");
+  const assigneeKey = assignee_user_key ?? assignee ?? null;
   const now = nowUtc();
   const existing = db.prepare("SELECT created_at FROM team_tasks WHERE id = ?").get(id);
 
@@ -320,7 +340,7 @@ export function upsertTeamTask(db, team_id, task) {
     id,
     team_id,
     status,
-    assignee || null,
+    assigneeKey,
     JSON.stringify(rest),
     existing?.created_at || created_at || now,
     now

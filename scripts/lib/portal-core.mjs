@@ -9,7 +9,9 @@ import { loadProfile } from "./profile.mjs";
 
 const PORTAL_FILE = "portal.json";
 const DEFAULT_PORT = Number(process.env.GH_STUDENT_PORTAL_PORT || 18791);
-const PORTAL_UI_VERSION = process.env.GH_PORTAL_UI_VERSION || "4";
+const PORTAL_UI_VERSION = process.env.GH_PORTAL_UI_VERSION || "7";
+const HOTSPOT_HOST = process.env.GH_STUDENT_PORTAL_HOTSPOT_HOST?.trim() || "192.168.137.1";
+const DASHBOARD_DIR = path.join(WORKSPACE, "dashboard");
 
 export function portalPath(userKey) {
   return path.join(userDir(userKey), PORTAL_FILE);
@@ -126,15 +128,53 @@ export function detectLanIp() {
   return listLanIps()[0];
 }
 
+function readJsonSafe(file) {
+  try {
+    if (!fs.existsSync(file)) return null;
+    return JSON.parse(fs.readFileSync(file, "utf8").replace(/^\uFEFF/, ""));
+  } catch {
+    return null;
+  }
+}
+
+export function hotspotHost() {
+  return HOTSPOT_HOST;
+}
+
+export function publicStudentPortalBaseUrl() {
+  const env =
+    process.env.GH_STUDENT_PORTAL_PUBLIC_URL?.trim() ||
+    process.env.TELEGRAM_STUDENT_MINIAPP_URL?.trim();
+  if (env) return env.replace(/\/+$/, "");
+
+  const state = readJsonSafe(path.join(DASHBOARD_DIR, ".portal-state.json"));
+  const stateUrl = typeof state?.student_tunnel_url === "string"
+    ? state.student_tunnel_url.trim()
+    : "";
+  if (stateUrl.startsWith("https://")) return stateUrl.replace(/\/+$/, "");
+
+  return "";
+}
+
 export function portalUrl(userKey, { host, port = DEFAULT_PORT } = {}) {
   const { token } = ensurePortalToken(userKey);
+  const publicBase = publicStudentPortalBaseUrl();
   const ip = host || detectLanIp();
+  const primaryHost = host || (listLanIps().includes(HOTSPOT_HOST) ? HOTSPOT_HOST : ip);
+  const pathPart = `/my/${token}?v=${PORTAL_UI_VERSION}`;
+  const hotspotUrl = `http://${HOTSPOT_HOST}:${port}${pathPart}`;
+  const lanUrl = `http://${primaryHost}:${port}${pathPart}`;
   return {
     token,
-    host: ip,
+    host: primaryHost,
     port,
-    url: `http://${ip}:${port}/my/${token}?v=${PORTAL_UI_VERSION}`,
-    path: `/my/${token}?v=${PORTAL_UI_VERSION}`,
+    url: publicBase ? `${publicBase}${pathPart}` : hotspotUrl,
+    public_url: publicBase ? `${publicBase}${pathPart}` : "",
+    public_base_url: publicBase,
+    lan_url: lanUrl,
+    hotspot_url: hotspotUrl,
+    hotspot_host: HOTSPOT_HOST,
+    path: pathPart,
     ui_version: PORTAL_UI_VERSION,
   };
 }

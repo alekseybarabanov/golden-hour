@@ -6,16 +6,25 @@
     return crypto.randomUUID();
   }
 
+  function isThinkingToken(text) {
+    const t = String(text || "").trim();
+    if (!t) return true;
+    if (/^\/?think$/i.test(t)) return true;
+    if (/^<\/?redacted_thinking>$/i.test(t)) return true;
+    return false;
+  }
+
   function extractText(message) {
     if (message == null) return "";
-    if (typeof message === "string") return message;
-    if (typeof message.text === "string") return message.text;
-    if (typeof message.content === "string") return message.content;
+    if (typeof message === "string") return isThinkingToken(message) ? "" : message;
+    if (typeof message.text === "string") return isThinkingToken(message.text) ? "" : message.text;
+    if (typeof message.content === "string") return isThinkingToken(message.content) ? "" : message.content;
     if (Array.isArray(message.content)) {
       return message.content
-        .filter((b) => b && b.type === "text" && b.text)
+        .filter((b) => b && b.type === "text" && b.text && !isThinkingToken(b.text))
         .map((b) => b.text)
-        .join("\n");
+        .join("\n")
+        .trim();
     }
     return "";
   }
@@ -225,6 +234,10 @@
 
     chatAbort(sessionKey, runId) {
       return this.request("chat.abort", { sessionKey, runId });
+    }
+
+    sessionsList(params = {}) {
+      return this.request("sessions.list", params, 30000);
     }
   }
 

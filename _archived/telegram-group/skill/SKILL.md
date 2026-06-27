@@ -19,7 +19,7 @@ data/groups/<chat_id>/
   plans/YYYY-MM-DD.json
   members.json
   invites.json
-  tasks.json          # групповые задачи (lifecycle как team-tasks)
+  tasks.json          # групповые задачи (lifecycle: planned → in_progress → awaiting_review → done)
   notifications.log
 ```
 
@@ -66,7 +66,6 @@ JSON включает `group`: `{ registered, is_member, members_count, has_plan
 |---|---|---|
 | `telegram-group` | group | lifecycle, задачи |
 | `study-plan` / `daily-plan` | group | `--group` → plan в data/groups/ |
-| `team-tasks` | альтернатива | data/teams/ для отдельных команд |
 | `timer` / `tasks` | member DM | личные — только в личку |
 | `help-menu` | group | групповой вариант |
 
@@ -84,5 +83,4 @@ JSON включает `group`: `{ registered, is_member, members_count, has_plan
 
 ## Связанные скиллы
 
-- `team-tasks` — параллельная модель для команд вне Telegram-группы
 - `session-start` — + `--group` для inbound из группы

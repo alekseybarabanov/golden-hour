@@ -1,21 +1,35 @@
 #!/usr/bin/env node
-// profile-update.mjs — write or patch a user profile in the DB.
-// Used by onboarding skills instead of directly editing profile.md.
+// profile-update.mjs — patch user profile in SQLite (experimental, opt-in).
+// **File storage:** use profile-patch.mjs instead (default).
+//
+// Requires: npm install && GH_USE_DB=1
 //
 // Usage:
 //   node scripts/profile-update.mjs --user <user_key> --patch '{"name":"Миша","setup_status":"in_progress"}'
 //   node scripts/profile-update.mjs --user <user_key> --set name=Миша --set setup_status=in_progress
-//   node scripts/profile-update.mjs --user <user_key> --get          # read current profile
+//   node scripts/profile-update.mjs --user <user_key> --get
 
 import { parseArgs, requireUser, die, out, WORKSPACE } from "./lib/cli.mjs";
-import { getDb, upsertUser, getUser, defaultDbPath } from "./lib/db.mjs";
-import path from "node:path";
+import { isDbEnabled, getDb, upsertUser, getUser, defaultDbPath } from "./lib/db.mjs";
+
+if (!isDbEnabled()) {
+  die("sqlite_disabled", {
+    hint:
+      "SQLite is off. Use: node scripts/profile-patch.mjs --user <key> --set key=value. " +
+      "To enable SQLite: npm install && GH_USE_DB=1",
+  });
+}
 
 const { opts } = parseArgs(process.argv);
 const user_key = requireUser(opts);
 
 const dbPath = defaultDbPath(WORKSPACE);
 const db = getDb(dbPath);
+if (!db) {
+  die("sqlite_unavailable", {
+    hint: "Run npm install in the workspace, then GH_USE_DB=1",
+  });
+}
 
 // --get: print profile
 if (opts.get === "true" || opts.get === true) {
@@ -40,7 +54,6 @@ if (opts.patch) {
 }
 
 // --set key=value [--set key2=value2 ...] — individual field updates
-// Collect all --set entries
 const rawSets = [];
 for (let i = 2; i < process.argv.length; i++) {
   if (process.argv[i] === "--set" && process.argv[i + 1]) {
@@ -58,7 +71,6 @@ for (const entry of rawSets) {
   if (eq < 1) die(`invalid --set format: "${entry}" (expected key=value)`);
   const key = entry.slice(0, eq).trim();
   const raw = entry.slice(eq + 1);
-  // Try to parse as JSON value, fall back to string
   let value;
   try {
     value = JSON.parse(raw);

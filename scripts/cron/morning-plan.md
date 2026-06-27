@@ -24,6 +24,9 @@ Payload `command` — gateway выполняет shell напрямую:
 Регистрирует: `morning-plan` (07:00), `morning-brief` (09:00), `task-pings` (*/5), `evening-checkin` (21:00), `timer-tick` (1m). Доставка через `cron-deliver.mjs` + `TELEGRAM_BOT_TOKEN`. Требуется `openclaw gateway`.
 
 Или только план:
+
+```powershell
+.\scripts\cron\register-morning-plan.ps1
 ```
 
 Или вручную:

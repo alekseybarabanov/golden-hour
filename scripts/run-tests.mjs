@@ -5,32 +5,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import {
-  createTeam,
-  inviteMember,
-  acceptInvite,
-  addTask,
-  takeTask,
-  submitTask,
-  approveTask,
-  leaveTeam,
-  listTasks,
-  resolvePendingInvites,
-} from "./lib/team-tasks.mjs";
-import { parseProfile, loadProfile, getSetupStatus, getPurposes } from "./lib/profile.mjs";
+import { parseProfile, loadProfile, getSetupStatus, getPurposes, patchProfileMarkdown, formatProfileField, mergeProfile } from "./lib/profile.mjs";
 import { isTaskOverdue, parseTasksYaml } from "./lib/tasks-core.mjs";
 import { todayISO } from "./lib/dates.mjs";
 import { parsePlanTopics, parseSprintTopics, getCurrentPlanTopic } from "./lib/plan-parse.mjs";
-import {
-  createGroup,
-  addGroupTask,
-  takeGroupTask,
-  submitGroupTask,
-  approveGroupTask,
-  listGroupTasks,
-  acceptGroupInvite,
-  inviteToGroup,
-} from "./lib/group-core.mjs";
 import { balanceDay } from "./lib/daily-balancer.mjs";
 import { assignWeeks, buildStudyPlan } from "./lib/study-plan.mjs";
 import {
@@ -65,7 +43,8 @@ import {
   countDoneTasks,
 } from "./lib/plan-utils.mjs";
 import { wasDelivered, markDelivered } from "./lib/delivery-state.mjs";
-import { detectCurrentStep, hasDeadline } from "./lib/onboarding.mjs";
+import { detectCurrentStep, hasDeadline, hasExamTopics, hasExamTopicLevels } from "./lib/onboarding.mjs";
+import { resolveCodifier, defaultTopicLevels } from "./lib/exam-topics-core.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WORKSPACE = path.resolve(__dirname, "..");
@@ -127,6 +106,20 @@ assert(
   detectCurrentStep({ ...examMid, exam_topics: ["алгебра"] })?.name === "exam-self-assess",
   "exam needs levels after topics"
 );
+assert(
+  detectCurrentStep({ ...examMid, exam_topics: [] })?.name === "exam-topics",
+  "empty exam_topics blocks onboarding"
+);
+assert(
+  detectCurrentStep({
+    ...examMid,
+    exam_topics: ["алгебра"],
+    exam_topic_levels: {},
+  })?.name === "exam-self-assess",
+  "empty exam_topic_levels blocks onboarding"
+);
+assert(!hasExamTopics({ exam_topics: [] }), "hasExamTopics empty array");
+assert(!hasExamTopicLevels({ exam_topic_levels: {} }), "hasExamTopicLevels empty map");
 const olympiadLevelOnly = {
   name: "Боря",
   purpose: "olympiad",
@@ -176,206 +169,6 @@ const parsed = parseTasksYaml(`- id: 1
   status: planned
   weight: 5`);
 assert(parsed[0].name === "Test", "parseTasksYaml name");
-
-// --- group accept (invs scope bug) ---
-const grpDir = path.join(WORKSPACE, ".test-group-" + Date.now());
-const prevWs = process.env.GH_WORKSPACE;
-process.env.GH_WORKSPACE = grpDir;
-fs.mkdirSync(path.join(grpDir, "data", "groups", "-1001"), { recursive: true });
-fs.mkdirSync(path.join(grpDir, "users", "tg-accept"), { recursive: true });
-const inviteCode = "abc12345";
-fs.writeFileSync(
-  path.join(grpDir, "data", "groups", "-1001", "invites.json"),
-  JSON.stringify([
-    {
-      code: inviteCode,
-      created_at: "2026-06-01T00:00:00+00:00",
-      expires_at: "2099-01-01T00:00:00+00:00",
-      used: false,
-    },
-  ]),
-  "utf8"
-);
-fs.writeFileSync(path.join(grpDir, "data", "groups", "-1001", "members.json"), "[]", "utf8");
-fs.writeFileSync(
-  path.join(grpDir, "data", "groups", "-1001", "meta.json"),
-  JSON.stringify({ chat_id: "-1001", goal: "Test", owner_user_key: "tg-owner" }),
-  "utf8"
-);
-const groupAccept = spawnSync(
-  process.execPath,
-  [
-    path.join(__dirname, "group.mjs"),
-    "group",
-    "accept",
-    "--user",
-    "tg-accept",
-    "--code",
-    inviteCode,
-  ],
-  { cwd: grpDir, encoding: "utf8" }
-);
-assert(groupAccept.status === 0, "group accept exit 0");
-const acceptOut = JSON.parse(groupAccept.stdout.trim());
-assert(acceptOut.ok && acceptOut.action === "accepted", "group accept ok");
-
-// --- group task lifecycle (group-core) ---
-const gOwner = "tg-g1";
-const gMember = "tg-g2";
-createGroup({
-  userKey: gOwner,
-  chatId: "-2002",
-  goal: "Group tasks test",
-  workspace: grpDir,
-});
-const invG = inviteToGroup({
-  userKey: gOwner,
-  chatId: "-2002",
-  telegramId: 999,
-  username: "@gmember",
-  workspace: grpDir,
-});
-acceptGroupInvite({ userKey: gMember, code: invG.code, workspace: grpDir });
-const gAdded = addGroupTask({
-  userKey: gOwner,
-  chatId: "-2002",
-  title: "Read chapter",
-  workspace: grpDir,
-});
-assert(gAdded.task.id === "task-001", "group task id");
-takeGroupTask({
-  userKey: gMember,
-  chatId: "-2002",
-  taskId: gAdded.task.id,
-  workspace: grpDir,
-});
-submitGroupTask({
-  userKey: gMember,
-  chatId: "-2002",
-  taskId: gAdded.task.id,
-  note: "done",
-  workspace: grpDir,
-});
-const gApproved = approveGroupTask({
-  userKey: gOwner,
-  chatId: "-2002",
-  taskId: gAdded.task.id,
-  workspace: grpDir,
-});
-assert(gApproved.task.status === "done", "group task approved");
-const gList = listGroupTasks({ userKey: gOwner, chatId: "-2002", workspace: grpDir });
-assert(gList.count === 1, "group task list");
-
-fs.rmSync(grpDir, { recursive: true, force: true });
-if (prevWs === undefined) delete process.env.GH_WORKSPACE;
-else process.env.GH_WORKSPACE = prevWs;
-
-const ttDir = path.join(WORKSPACE, ".test-team-tasks-" + Date.now());
-const prevGh = process.env.GH_WORKSPACE;
-process.env.GH_WORKSPACE = ttDir;
-fs.mkdirSync(path.join(ttDir, "users"), { recursive: true });
-
-const owner = "tg-100";
-const member = "tg-200";
-const created = createTeam({
-  userKey: owner,
-  telegramId: 100,
-  username: "@alice",
-  goal: "Test team",
-  workspace: ttDir,
-});
-const teamId = created.team_id;
-assert(teamId.startsWith("team-"), "team id prefix");
-
-const inv = inviteMember({
-  userKey: owner,
-  teamId,
-  targetTelegramId: 200,
-  targetUsername: "@bob",
-  workspace: ttDir,
-});
-assert(inv.invite_code, "invite code");
-
-const joined = acceptInvite({
-  userKey: member,
-  inviteCode: inv.invite_code,
-  telegramId: 200,
-  username: "@bob",
-  workspace: ttDir,
-});
-assert(joined.role === "member", "member joined");
-
-const added = addTask({
-  userKey: owner,
-  teamId,
-  title: "Build feature",
-  deadline: "2000-01-01T00:00:00+00:00",
-  workspace: ttDir,
-});
-const taskId = added.task.id;
-assert(taskId === "task-001", "task id");
-
-const taken = takeTask({
-  userKey: member,
-  teamId,
-  taskId,
-  telegramId: 200,
-  workspace: ttDir,
-});
-assert(taken.task.status === "in_progress", "in progress");
-assert(taken.task.display_status === "overdue", "overdue computed");
-
-const submitted = submitTask({
-  userKey: member,
-  teamId,
-  taskId,
-  note: "done",
-  workspace: ttDir,
-});
-assert(submitted.task.status === "awaiting_review", "submitted");
-
-const approved = approveTask({
-  userKey: owner,
-  teamId,
-  taskId,
-  workspace: ttDir,
-});
-assert(approved.task.status === "done", "approved");
-
-const task2 = addTask({
-  userKey: owner,
-  teamId,
-  title: "Second",
-  workspace: ttDir,
-});
-takeTask({
-  userKey: member,
-  teamId,
-  taskId: task2.task.id,
-  telegramId: 200,
-  workspace: ttDir,
-});
-const left = leaveTeam({ userKey: member, teamId, workspace: ttDir });
-assert(left.auto_submitted_tasks.includes(task2.task.id), "auto submit on leave");
-
-const resolved = resolvePendingInvites({
-  userKey: "tg-300",
-  telegramId: 300,
-  username: "@carol",
-  workspace: ttDir,
-});
-assert(resolved.count === 0, "no orphan resolve");
-
-try {
-  listTasks({ userKey: member, teamId, workspace: ttDir });
-  assert(false, "ex-member should not list");
-} catch (e) {
-  assert(e.message === "not a team member", "isolation");
-}
-
-fs.rmSync(ttDir, { recursive: true, force: true });
-if (prevGh === undefined) delete process.env.GH_WORKSPACE;
-else process.env.GH_WORKSPACE = prevGh;
 
 // --- daily-balancer ---
 const balanced = balanceDay(
@@ -552,6 +345,42 @@ let ds = { date: "2026-06-24", delivered: {} };
 assert(!wasDelivered(ds, "morning-brief"), "delivery not yet");
 ds = markDelivered(ds, "morning-brief", "x");
 assert(wasDelivered(ds, "morning-brief"), "delivery marked");
+
+// --- profile patch ---
+const sampleProfile = `- **name:** "Тест"
+- **setup_status:** in_progress
+- **purpose:** exam
+`;
+const profilePatched = patchProfileMarkdown(sampleProfile, {
+  name: "Миша",
+  exam_type: "ege",
+  exam_topics: ["Алгебра", "Геометрия"],
+});
+assert(profilePatched.text.includes('**name:** "Миша"'), "patch replaces name");
+assert(profilePatched.text.includes("Алгебра"), "patch adds exam_topics list");
+const merged = mergeProfile({ a: 1, b: { x: 1 } }, { b: { y: 2 }, c: 3 });
+assert(merged.b.x === 1 && merged.b.y === 2, "mergeProfile deep merge");
+assert(formatProfileField("hours_per_week", 8).includes("8"), "formatProfileField scalar");
+
+// --- exam codifiers ---
+const cod = resolveCodifier({ exam_type: "ege", exam_subject: "math", exam_subject_variant: "profile" });
+assert(cod?.id === "ege-math-profile", "resolveCodifier ege math profile");
+assert(defaultTopicLevels(["A", "B"], "слабо").A === "слабо", "defaultTopicLevels");
+
+// --- onboarding quick skip self-assess ---
+const quickStep = detectCurrentStep({
+  name: "X",
+  purpose: "exam",
+  exam_type: "ege",
+  exam_subject: "math",
+  exam_topics: ["Алгебра"],
+  onboarding_mode: "quick",
+  deadline: "2027-06",
+  hours_per_week: 5,
+  priorities: { Алгебра: 3 },
+  daily_load: "normal",
+});
+assert(quickStep === null, "quick mode skips exam-self-assess without levels");
 
 console.log(`\nTests: ${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

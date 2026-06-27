@@ -154,10 +154,6 @@ function workCredit(session, reason, full = false) {
   return { credited: Math.min(planned, elapsed), planned, elapsed };
 }
 
-function phaseButtons() {
-  return null;
-}
-
 function workStartMessage(session) {
   const n = (session.cycles_done || 0) + 1;
   const w = session.phase_duration_minutes || session.work_minutes;
@@ -192,7 +188,7 @@ function statusMessage(session) {
       : session.variant;
   return {
     message: `Сейчас: *${phaseRu}* (${elapsed}/${session.phase_duration_minutes} мин)\nЦиклов сделано: *${session.cycles_done || 0}*\nВариант: ${variant}\nОсталось ~${left} мин`,
-    buttons: phaseButtons(),
+    buttons: null,
   };
 }
 
@@ -286,7 +282,7 @@ function transitionImmediate(session, dir, reason, creditReason) {
   notifications.push({
     template: next.phase === "work" ? "work-start" : next.phase === "long_break" ? "long-break-start" : "break-start",
     message: next.phase === "work" ? workStartMessage(session) : breakStartMessage(session),
-    buttons: phaseButtons(),
+    buttons: null,
   });
   return notifications;
 }
@@ -329,7 +325,7 @@ export function cmdStart(dir, parsed, opts = {}) {
     ok: true,
     action: "started",
     message: workStartMessage(session),
-    buttons: phaseButtons(),
+    buttons: null,
     summary: `Помодоро запущен (${parsed.variant}, ${parsed.work_minutes}/${parsed.break_minutes}).`,
   };
 }
@@ -454,7 +450,7 @@ function tickScheduled(dir, session) {
   notifications.push({
     template: nb.phase === "work" ? "work-start" : nb.phase === "long_break" ? "long-break-start" : "break-start",
     message: nb.phase === "work" ? workStartMessage(session) : breakStartMessage(session),
-    buttons: phaseButtons(),
+    buttons: null,
   });
   return { ok: true, active: true, notifications };
 }
@@ -704,7 +700,7 @@ export function cmdScheduleConfirm(dir) {
     ok: true,
     action: "schedule_started",
     message: msg,
-    buttons: phaseButtons(),
+    buttons: null,
     summary: `Запланированная сессия: ${pending.window_topic || "работа"}.`,
   };
 }

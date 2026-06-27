@@ -47,24 +47,36 @@ const link = portalUrl(userKey, {
   port: opts.port ? Number(opts.port) : undefined,
 });
 const { token } = link;
-const portalUrls = listLanIps().map(
+const includeLan = opts["include-lan"] === "true" || opts.includeLan === "true";
+const lanPortalUrls = listLanIps().map(
   (ip) => `http://${ip}:${link.port}/my/${token}?v=${link.ui_version}`
 );
-const hotspotUrl = `http://192.168.137.1:${link.port}/my/${token}?v=${link.ui_version}`;
+const portalUrls = link.public_url ? [link.public_url, link.hotspot_url] : [link.hotspot_url, ...lanPortalUrls];
 
-out({
+const payload = {
   user_key: userKey,
   name: userDisplayName(userKey, readText),
   session_key: sessionKeyForUser(userKey),
-  portal_url: link.url,
+  portal_url: link.public_url || link.hotspot_url,
+  public_portal_url: link.public_url || null,
   portal_urls: portalUrls,
-  hotspot_url: hotspotUrl,
-  lan_ip: link.host,
+  hotspot_url: link.hotspot_url,
+  lan_portal_url: link.lan_url,
+  hotspot_host: link.hotspot_host,
   port: link.port,
-  access_note:
-    "Sber-Guest и другие Guest Wi-Fi часто блокируют телефон↔ПК. Если ссылка не открывается: включи раздачу Wi‑Fi с ПК (мобильный хотспот), подключи телефон к хотспоту ПК, открой hotspot_url.",
+  access_note: link.public_url
+    ? "Откройте portal_url — это HTTPS через локальный туннель на ПК."
+    : "Включите мобильный хотспот на этом ПК, подключите телефон к его Wi‑Fi и откройте portal_url в браузере.",
+  hint: link.public_url
+    ? "Откройте portal_url в браузере телефона или через кнопку Study в Telegram."
+    : "Параметры Windows → Сеть → Мобильный хотспот → Вкл. Телефон подключается к Wi‑Fi ПК, не к гостевой сети.",
   hotspot_hint:
-    "Параметры → Сеть → Мобильный хотспот → Вкл. Телефон подключается к Wi‑Fi ПК, не к Sber-Guest.",
-  hint: "Откройте ссылку в браузере телефона, подключённого к тому же Wi‑Fi.",
-  lan_ip_detected: detectLanIp(),
-});
+    "Параметры → Сеть → Мобильный хотспот → Вкл. Адрес шлюза обычно http://192.168.137.1",
+};
+
+if (includeLan) {
+  payload.lan_portal_urls = lanPortalUrls;
+  payload.lan_ip_detected = detectLanIp();
+}
+
+out(payload);

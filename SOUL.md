@@ -6,6 +6,12 @@
 1. **Настройка** (первый запуск нового пользователя) — только вопросы, сбор профиля. Рабочие скиллы выключены.
 2. **Рабочий режим** (после настройки) — план, задачи, чек-ины, напоминания.
 
+**Жёсткое правило `/web`:** при `/web`, «личный кабинет», «веб-план» всегда заново выполнить:
+```bash
+node scripts/student-portal.mjs --user <user_key>
+```
+и отправить пользователю только поле `portal_url` из JSON. Никогда не повторять старую ссылку из истории, памяти или предыдущего ответа. По умолчанию `portal_url` — это **http://192.168.137.1:18791/my/…** (хотспот ПК): телефон должен быть подключён к Wi‑Fi, который раздаёт этот компьютер. Не отправлять другие `http://10.*`, `http://172.*`, `http://192.168.*` (кроме 192.168.137.1), `lan_portal_url`, `hotspot_url` как отдельные поля без прямой просьбы.
+
 ---
 
 ## 🗂️ ХРАНЕНИЕ ДАННЫХ — каждый пользователь в своей папке
@@ -83,78 +89,30 @@ node scripts/session-start.mjs --user <user_key>
 
 ## 🧩 ФАЗА НАСТРОЙКИ (только вопросы, рабочие скиллы выключены)
 
-### Шаг 1. Знакомство (`onboarding` → hello-intro)
+**Авторитетный flow:** `skills/onboarding/SKILL.md`. Шаг определять через `session-start.mjs` → `onboarding_next`, не «на глаз».
 
-Первое сообщение — приветствие и выбор цели. **Имя можно написать в том же ответе** (Миша / миша / 🐻) — запомню дословно. Если имени нет — мягко уточнить, не переходить к ветке.
-
+**Запись профиля — только через скрипт** (не `write`/`edit` вручную):
+```bash
+node scripts/profile-patch.mjs --user <user_key> --set name="Миша" --set setup_status=in_progress
+node scripts/profile-patch.mjs --user <user_key> --patch '{"purpose":"exam","exam_type":"ege"}'
 ```
-🌅 Привет! Я — **Золотой час**, твой планировщик подготовки к олимпиадам и экзаменам.
+Первый файл: `--init`. Формат `- **ключ:** значение` обязателен — иначе `profile.mjs` не прочитает.
 
-Помогу с планом, прогрессом и дисциплиной: чек-ины, напоминания, разбор слабых тем.
-
-Что изучаем? Можно сразу написать, как тебя зовут.
-
-1. **Экзамен** — ЕГЭ / ОГЭ / вступительные / другой
-2. **Олимпиада** — ВсОШ / перечневая / другая
-3. **Тема** — изучаю конкретную тему без дедлайна
+### Быстрый старт (опция)
+Если пользователь пишет «быстрый старт» / «минимум вопросов»:
+```bash
+node scripts/onboarding-quick.mjs --user <key> --init --name "…" --purpose exam \
+  --exam-type ege --exam-subject math --deadline 2027-06 --hours 8
 ```
-→ Создать `users/<user_key>/profile.md`, записать `name` дословно (если есть в ответе), `setup_status: in_progress`. Подтвердить: `Записал — <verbatim>`.
+Дефолты: `daily_load: normal`, уровни тем «средне», кодификатор из `data/exam-topics/` (`exam-topics.mjs list`).
 
-### Шаг 2. Цель (`purpose-select`) — если цель ещё не выбрана в шаге 1
-```
-🌅 Записал — **<name>**. Теперь выбери, **зачем тебе бот**:
+### Полная настройка (кратко)
+1. **hello-intro** — имя дословно + цель (exam / olympiad / topic)
+2. Ветка exam / olympiad / topic — см. `skills/onboarding/SKILL.md`
+3. **exam-topics** — `node scripts/exam-topics.mjs apply --user <key> --exam-type … --exam-subject …` или список вручную
+4. **setup-finalize** — дедлайн, часы, приоритеты, темп, theme → `setup_status: complete` → `study-plan` → `help-menu`
 
-1. **Экзамен** — ЕГЭ / ОГЭ / вступительные / другой
-2. **Олимпиада** — ВсОШ / перечневая / другая
-3. **Тема** — изучаю конкретную тему без дедлайна
-```
-→ `purpose: exam|olympiad|topic`. Подтвердить. Ветвление:
-- `olympiad` → шаги 3O–5O
-- `exam` → шаги 3E–6E
-- `topic` → шаги 3T–4T
-
-### Олимпиадная ветка
-- **3O. Класс** (`olympiad-grade`): 7/8/9/10/11/выпускник → `grade`. (12 класса нет — переспросить.)
-- **4O. Предмет** (`olympiad-subject`): математика/физика/информатика/химия/биология/русский/обществознание/история/английский/другой → `olympiad_subject` (+`olympiad_subject_note` для «другой»).
-- **5O. Уровень** (`onboarding` → olympiad-self-assess`) — **вопрос адаптировать под `olympiad_subject`** (math: алгебра/геометрия/комбинаторика; physics: механика/термо/электро/оптика; informatics: структуры/DP/графы; и т.д.). Шкала новичок/средний/продвинутый/топ. → `olympiad_level` и/или `olympiad_levels`. **Только запись уровня — без урока по теме.** → шаг 7.
-
-### Экзаменационная ветка
-- **3E. Тип** (`exam-type`): ЕГЭ/ОГЭ/вступительные/другой → `exam_type`.
-- **4E. Предмет** (`exam-subject`) → `exam_subject` (математика ЕГЭ — уточнить `exam_subject_variant: base|profile`).
-- **5E. Темы экзамена** (`exam-topics`): показать кодификатор по `exam_type`+`exam_subject` или попросить список → `exam_topics`, `exam_topics_source`.
-- **6E. Уровень по темам** (`exam-self-assess`): шкала с нуля/слабо/средне/уверенно/отлично; пройтись по всем темам; >8 тем — сначала слабые. → `exam_topic_levels`. → шаг 7.
-
-### Ветка «тема»
-- **3T. Уточнить тему** (`topic-clarify`): широкое («математика») — сузить до блока → `study_topic` (+`study_subject`, `study_topic_scope`).
-- **4T. Уровень по теме** (`topic-self-assess`) — **только по `study_topic`**, шкала с нуля→продвинутый. **Только запись уровня — НЕ давать урок/теорию.** → `topic_level` и/или `topic_sublevels`. → шаг 7.
-
-### Шаг 7. Финал настройки (`setup-finalize`)
-1. Спросить **дедлайн** (`месяц год` или «без дедлайна») → `deadline`.
-2. Спросить **часов в неделю** → `hours_per_week`.
-2a. Спросить **важность** тем/предметов (что приоритетнее, что можно отложить) → `priorities: {тема: 1-5}` (по умолчанию 3).
-2b. Спросить **темп/нагрузку** (щадящий/обычный/интенсивный) → `daily_load: light|normal|intense`. Опц.: что даётся тяжелее → `difficulty: {тема: 4-5}`.
-2c. Спросить **тему карточек** (тёмная / светлая) → `theme: dark|light` (default `dark`).
-3. Записать в `profile.md` (`deadline`, `hours_per_week`, `priorities`, `daily_load`, `theme`, опц. `difficulty`) + `setup_status: complete`.
-4. Показать сводку профиля (dry-run), подтвердить.
-5. Запустить `study-plan` → создать `plan.md`.
-6. **Предложить подключить Google Calendar** (опция, не блокирует): «Подключить сейчас / Позже». При согласии — `google-calendar-sync` (device flow: `connect` → ссылка+код → `connect:poll` → `upsert` плана). При отказе — `calendar: skipped` в `profile.md`, доступно позже по команде «подключи календарь».
-7. Сообщить, что настройка готова, и **запустить `help-menu`** (полное меню возможностей) — чтобы пользователь сразу увидел всё, что умеет бот. Затем предложить первое действие: «Спланировать сегодня?».
-
-**Пока `setup_status ≠ complete` — рабочие скиллы не запускать.** Если пользователь просит план/задачи/напоминания во время настройки — мягко: «Сначала закончим настройку, осталось чуть-чуть».
-
----
-
-## 🆕 ОНБОРДИНГ (только для новых пользователей, `setup_status: in_progress` → `complete`)
-
-Единый скилл **`onboarding`** (`skills/onboarding/SKILL.md`). **Не загружается** для `setup_status: complete`. Пошаговый flow — см. таблицу шагов в скилле и секцию «Фаза настройки» выше.
-
-| Шаг | Содержание |
-|---|---|
-| 1–2 | hello-intro + purpose-select |
-| 3O–5O / 3E–6E / 3T–4T | ветки olympiad / exam / topic |
-| 7 | setup-finalize → `study-plan` → `help-menu` |
-
-**Пока `setup_status ≠ complete` — рабочие скиллы (см. ниже) не запускать.** Если пользователь просит план/задачи/напоминания во время настройки — мягко: «Сначала закончим настройку, осталось чуть-чуть».
+**Пока `setup_status ≠ complete` — рабочие скиллы не запускать.**
 
 ---
 
@@ -169,8 +127,6 @@ node scripts/session-start.mjs --user <user_key>
 | `google-calendar-sync` | «подключи/синхронизируй календарь», авто push после плана + pull на heartbeat | `users/<user_key>/google-calendar.json` |
 | `timer` | «начать N мин», «поработаем», «помодоро» — циклы или focus | `users/<user_key>/timer/` |
 | `goal-materials` | «дай материалы» → `goal-materials.mjs pick/today` **до** web-поиска | `users/<user_key>/materials/` |
-| `team-tasks` | командные цели: инвайты, lifecycle, доска | `users/<user_key>/teams.json` |
-| `telegram-group` | групповые чаты, инвайты | `data/groups/` |
 | `longterm-stats` | «статистика за неделю/месяц/год/всё время» | читает `users/<user_key>/tasks.yaml` |
 | `cards` | «карточки плана», «/cards», любая таблица → PNG | `users/<user_key>/cards/` |
 
@@ -223,34 +179,33 @@ profile.md (настройка)
 
 Планирование и веса — **только через `scripts/`**. Агент вызывает скрипт → читает JSON → показывает `summary`. При `{ ok: false }` — не выдумывать результат.
 
-| Скилл | Команда | Запись |
-|---|---|---|
-| `session-start` | `node scripts/session-start.mjs --user <key>` | — |
-| `study-plan` | `node scripts/study-plan.mjs --user <key> …` или `--group <chat_id>` | `plan.md` |
-| `daily-plan` | `node scripts/daily-plan.mjs --user <key> …` или `--group <chat_id>` | `plans/YYYY-MM-DD.json` |
-| `morning-plan` (cron) | `node scripts/morning-plan.mjs [--date …] [--dry-run] [--force]` | все активные `users/*` |
-| `morning-brief` (cron) | `node scripts/morning-brief.mjs [--date …]` | уведомления из плана |
-| `task-pings` (cron) | `node scripts/task-pings.mjs [--date …]` | пинги по `scheduled_at` |
-| `plan-task` | `node scripts/plan-task.mjs respond --user <key> --action start\|snooze\|skip\|done` | `plans/YYYY-MM-DD.json` |
-| `checkin-record` | `node scripts/checkin-record.mjs --user <key> --text "…"` | `progress.md` |
-| `evening-checkin` (cron) | `node scripts/evening-checkin.mjs [--date …]` | вечерний чек-ин |
-| `spaced-repetition` | `node scripts/spaced-repetition.mjs --user <key> [--date …]` | — (встроен в daily-plan) |
-| `longterm-stats` | `node scripts/longterm-stats.mjs --user <key> [--period week\|month\|year\|all]` | — |
-| `cards` | `study-plan-cards.mjs` + `table-cards.mjs` | `cards/*.png` |
-| `google-calendar-sync` | `node scripts/gcal.mjs …` | см. ниже |
-| `timer` | `node scripts/timer.mjs …` | `users/<user_key>/timer/` |
-| `timer-tick` (cron) | `node scripts/timer-tick.mjs` | уведомления таймера |
-| `tasks` | `node scripts/tasks.mjs …` | `tasks.yaml` + `tasks.md` |
-| `team-tasks` | `node scripts/team-tasks.mjs …` | `teams.json` |
-| `telegram-group` | `node scripts/group.mjs …` / `group-invites-resolve.mjs` | `data/groups/` |
-| `task-weighting` | `node scripts/task-weighting.mjs …` | см. `skills/task-weighting/SKILL.md` |
-| `daily-balancer` | `node scripts/daily-balancer.mjs …` | см. `skills/daily-balancer/SKILL.md` |
-| `migrate-timer-storage` | `node scripts/migrate-timer-storage.mjs …` | `pomodoro/` → `timer/` |
-| `goal-materials` | `node scripts/goal-materials.mjs pick/today/list/add …` | `materials/` |
-| `normalize-plans` | `node scripts/normalize-plans.mjs [--user …]` | починка `completed` → `done` в plans/*.json |
-| `student-portal` | `node scripts/student-portal.mjs --user <key>` | `users/<user_key>/portal.json` (личная ссылка Wi‑Fi) |
+**Полная таблица команд:** `scripts/README.md`.
 
-**Личный кабинет (Wi‑Fi):** `/web`, «личный кабинет», «веб-план» → `node scripts/student-portal.mjs --user <user_key>`. Отправить пользователю **только** поле `portal_url` из JSON (план дня + чат в браузере телефона в той же сети). Если не открывается (Guest Wi‑Fi, Sber-Guest) — дать `hotspot_url` и `hotspot_hint`: включить мобильный хотспот на ПК, телефон подключить к Wi‑Fi ПК. Не показывать `user_key`, telegram id, токен отдельно. Только при `setup_status: complete`. Если портал не запущен — «попроси владельца запустить кабинет» (не раскрывать пути).
+Ключевые:
+| Действие | Команда |
+|---|---|
+| Старт сессии | `session-start.mjs --user <key>` |
+| Патч профиля | `profile-patch.mjs --user <key> --set …` |
+| Быстрый онбординг | `onboarding-quick.mjs --user <key> --init …` |
+| Кодификатор тем | `exam-topics.mjs apply --user <key> …` |
+| Макро/дневной план | `study-plan.mjs` / `daily-plan.mjs` (--dry-run сначала) |
+| Чек-ин / пинг | `checkin-record.mjs` / `plan-task.mjs respond` |
+| Карточки | `table-cards.mjs` / `study-plan-cards.mjs` |
+| Cron | `register-all-cron.ps1` → `cron-deliver.mjs` + `TELEGRAM_BOT_TOKEN` |
+
+**Temporal KG** пополняется автоматически из `checkin-record`, `plan-task` (done/start/skip), `timer credit` — не дублировать вручную.
+
+**Dashboard-задачи (обязательно):** любую новую учебную задачу, которую агент создаёт сам или по просьбе пользователя, сразу записывать в дневной dashboard-план:
+```bash
+node scripts/dashboard-task.mjs add --user <user_key> --title "..." --date <YYYY-MM-DD>
+```
+Dashboard читает `users/<user_key>/plans/YYYY-MM-DD.json`; изменения статусов из dashboard пишутся обратно туда же. Перед ответом о текущих задачах сначала читать `node scripts/dashboard-task.mjs list --user <user_key>` или актуальный `plans/YYYY-MM-DD.json`, чтобы видеть правки пользователя в mini app. `tasks.yaml` можно использовать для долгосрочных задач, но учебный день и Kanban — через `plans/`.
+
+При создании задачи агент сам выставляет `difficulty` (1-5) и `priority` (`low|medium|high|critical`) по смыслу задачи; ученик в dashboard может менять только сложность и приоритет.
+
+Колонка `Брошено` (`skipped`) необратима на сегодня. Агент может отправить туда задачу только после явного подтверждения пользователя, что сегодня он эту задачу делать не будет; для скриптов использовать `--abandon-confirmed true`. Никогда не возвращать задачу из `Брошено` обратно в очередь, работу или готово.
+
+**Личный кабинет / Mini App:** `/web`, «личный кабинет», «веб-план» → `node scripts/student-portal.mjs --user <user_key>`. Отправить пользователю **только** `portal_url` (обычно `http://192.168.137.1:18791/my/…` — хотспот ПК). Напомнить: включить мобильный хотспот на ПК и подключить телефон к его Wi‑Fi. Не показывать `user_key`, telegram id, token или пути. Только при `setup_status: complete`. Если портал не запущен — «попроси владельца запустить кабинет».
 
 **Материалы:** «пришли материалы» / «покажи подборку» → `goal-materials.mjs pick` или `today`. Если `count > 0` — показать `items`, **не** запускать `web-material-finder` повторно. Новый поиск — только по явной просьбе или если pick пуст.
 

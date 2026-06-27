@@ -1,15 +1,36 @@
 // Onboarding step detection (shared by session-start.mjs and tests).
 
+function hasNonEmptyList(value) {
+  if (value == null) return false;
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === "string") return value.trim().length > 0;
+  return true;
+}
+
+function hasNonEmptyMap(value) {
+  if (value == null) return false;
+  if (typeof value === "object" && !Array.isArray(value)) {
+    return Object.keys(value).length > 0;
+  }
+  return !!value;
+}
+
+export function hasExamTopics(profile) {
+  return hasNonEmptyList(profile?.exam_topics);
+}
+
+export function hasExamTopicLevels(profile) {
+  return hasNonEmptyMap(profile?.exam_topic_levels);
+}
+
 export function hasOlympiadLevel(profile) {
-  return !!(
-    profile.olympiad_levels ||
-    profile.olympiad_level ||
-    profile.olympiad_level_note
-  );
+  if (profile.olympiad_level || profile.olympiad_level_note) return true;
+  return hasNonEmptyMap(profile.olympiad_levels);
 }
 
 export function hasTopicLevel(profile) {
-  return !!(profile.topic_level || profile.topic_sublevels);
+  if (profile.topic_level) return true;
+  return hasNonEmptyMap(profile.topic_sublevels);
 }
 
 export function hasDeadline(profile) {
@@ -24,9 +45,13 @@ export function detectCurrentStep(profile) {
   if (profile.purpose === "exam") {
     if (!profile.exam_type) return { step: 3, name: "exam-type", field: "exam_type" };
     if (!profile.exam_subject) return { step: 4, name: "exam-subject", field: "exam_subject" };
-    if (!profile.exam_topics) return { step: 5, name: "exam-topics", field: "exam_topics" };
-    if (!profile.exam_topic_levels) {
-      return { step: 6, name: "exam-self-assess", field: "exam_topic_levels" };
+    if (!hasExamTopics(profile)) return { step: 5, name: "exam-topics", field: "exam_topics" };
+    if (!hasExamTopicLevels(profile)) {
+      if (profile.onboarding_mode === "quick" && hasExamTopics(profile)) {
+        // quick mode: levels filled by exam-topics.mjs / onboarding-quick.mjs
+      } else {
+        return { step: 6, name: "exam-self-assess", field: "exam_topic_levels" };
+      }
     }
   } else if (profile.purpose === "olympiad") {
     if (!profile.grade) return { step: 3, name: "olympiad-grade", field: "grade" };
@@ -64,11 +89,12 @@ export function getOnboardingPrompt(step) {
   if (!step) return null;
   const prompts = {
     "hello-intro":
-      "Как тебя зовут? И что изучаем — экзамен, олимпиада или тему?",
+      "Как тебя зовут? И что изучаем — экзамен, олимпиада или тему? (или «быстрый старт» — минимум вопросов)",
     "purpose-select": "Зачем тебе бот: 1) Экзамен 2) Олимпиада 3) Тема",
     "exam-type": "Какой экзамен: ЕГЭ, ОГЭ, вступительные или другой?",
     "exam-subject": "Какой предмет?",
-    "exam-topics": "По каким темам готовимся? Можно списком или «все из кодификатора».",
+    "exam-topics":
+      "По каким темам готовимся? Список, «все из кодификатора» или: node scripts/exam-topics.mjs apply --user <key> --exam-type ...",
     "exam-self-assess": "Оцени уровень по каждой теме: с нуля / слабо / средне / уверенно.",
     "olympiad-grade": "В каком классе?",
     "olympiad-subject": "Какой предмет олимпиады?",
@@ -100,9 +126,9 @@ export function buildOnboardingProgress(profile) {
     else missing.push("Тип экзамена");
     if (profile.exam_subject) filled.push(`Предмет: ${profile.exam_subject}`);
     else missing.push("Предмет");
-    if (profile.exam_topics) filled.push("Темы");
+    if (hasExamTopics(profile)) filled.push("Темы");
     else missing.push("Темы экзамена");
-    if (profile.exam_topic_levels) filled.push("Уровень по темам");
+    if (hasExamTopicLevels(profile)) filled.push("Уровень по темам");
     else missing.push("Уровень по темам");
   } else if (profile.purpose === "olympiad") {
     if (profile.grade) filled.push(`Класс: ${profile.grade}`);

@@ -26,6 +26,7 @@ import {
   updatePlanTask,
 } from "./lib/plan-task-core.mjs";
 import { normalizePlan } from "./lib/plan-utils.mjs";
+import { hookPlanTaskAction } from "./lib/kg-hooks.mjs";
 
 const { cmd, opts } = parseArgs(process.argv);
 if (cmd !== "respond") {
@@ -69,6 +70,15 @@ if (!dryRun) {
   writeJson(planPath, nextPlan);
 }
 
+let kg = null;
+if (!dryRun && ["done", "start", "skip"].includes(action)) {
+  try {
+    kg = hookPlanTaskAction(dir, applied.task, action);
+  } catch {
+    kg = { ok: false, error: "kg_hook_failed" };
+  }
+}
+
 out({
   user_key: userKey,
   date,
@@ -79,6 +89,7 @@ out({
   status: applied.task.status,
   snoozed_until: applied.task.snoozed_until || null,
   message,
+  kg,
   summary: dryRun
     ? `Dry-run: ${action} для «${task.title}» → ${applied.task.status}.`
     : message,

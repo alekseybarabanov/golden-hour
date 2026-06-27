@@ -4,6 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { userKeyToChatId, commitPingIfNew } from "./task-pings-core.mjs";
+import { deliveryStatePath, markDelivered } from "./delivery-state.mjs";
 import { readJson, writeJson, WORKSPACE } from "./cli.mjs";
 
 const API_BASE = "https://api.telegram.org";
@@ -43,26 +44,54 @@ function commitTaskPing(row, date) {
   if (committed) writeJson(statePath, next);
 }
 
+function commitDelivery(userKey, template, date) {
+  if (!userKey || !template || !date) return;
+  const plansDir = path.join(WORKSPACE, "users", userKey, "plans");
+  const statePath = deliveryStatePath(plansDir, date);
+  const state = readJson(statePath, { date, delivered: {} });
+  const next = markDelivered(state, template);
+  next.date = date;
+  writeJson(statePath, next);
+}
+
+function commitAfterDelivery(row, notification, date) {
+  const template = notification?.template;
+  if (template === "task-ping") {
+    commitTaskPing(row, date);
+  } else if (template === "morning-brief" || template === "evening-checkin") {
+    commitDelivery(row.user_key, template, date);
+  }
+}
+
 export async function sendTelegramMessage({ token, chatId, message, buttons }) {
-  const body = {
+  const base = {
     chat_id: chatId,
     text: message,
-    parse_mode: "Markdown",
   };
   if (buttons?.length) {
-    body.reply_markup = { inline_keyboard: buttons };
+    base.reply_markup = { inline_keyboard: buttons };
   }
 
-  const res = await fetch(`${API_BASE}/bot${token}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const data = await res.json();
-  if (!data.ok) {
-    throw new Error(data.description || `Telegram API ${res.status}`);
+  const attempts = [{ parse_mode: "Markdown" }, {}];
+  let lastError = null;
+
+  for (const extra of attempts) {
+    const body = { ...base, ...extra };
+    const res = await fetch(`${API_BASE}/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (data.ok) return data.result;
+    lastError = data.description || `Telegram API ${res.status}`;
+    if (extra.parse_mode && /parse entities|can't parse/i.test(String(lastError))) {
+      continue;
+    }
+    break;
   }
-  return data.result;
+
+  throw new Error(lastError || "Telegram send failed");
 }
 
 /**
@@ -111,9 +140,7 @@ export async function deliverFromPayload(payload, { dryRun = false } = {}) {
           message_id: msg.message_id,
           template: n.template || null,
         });
-        if (n.template === "task-ping") {
-          commitTaskPing(row, date);
-        }
+        commitAfterDelivery(row, n, date);
       } catch (e) {
         skipped.push({
           user_key: row.user_key,
