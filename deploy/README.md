@@ -104,15 +104,15 @@ command="/opt/golden-hour/deploy/ssh-deploy-wrapper.sh",no-port-forwarding,no-X1
 | fallback | `qwen2.5:7b-instruct` | локальный Ollama (`127.0.0.1:11434`) | — |
 
 Fallback срабатывает **только** при сбое MiniMax. Конфиг моделей —
-[`deploy/openclaw.config.json5`](openclaw.config.json5) (`models.providers`).
+[`deploy/openclaw.config.json`](openclaw.config.json) (`models.providers`).
 
 ### Локальная модель (Ollama)
 - Ставится и тянется в `setup-server.sh` при `INSTALL_OLLAMA=1` (по умолчанию).
 - Сменить модель: `OLLAMA_FALLBACK_MODEL=...` при setup **и** правка id в
-  `openclaw.config.json5` (`models.providers.ollama.models[].id`).
+  `openclaw.config.json` (`models.providers.ollama.models[].id`).
 - Маленький VPS: `llama3.2:3b` (~2 ГБ) или `INSTALL_OLLAMA=0` (тогда fallback
   недоступен, пока Ollama не поднимут вручную).
-- Ollama — отдельный сервис; лимит `MemoryMax=512M` бота его не ограничивает.
+- Ollama — отдельный сервис; лимит `MemoryMax=768M` бота его не ограничивает.
 
 ## Субагенты
 
@@ -224,5 +224,5 @@ systemd-cgtop
 
 - Каждый пользователь изолирован в `users/tg-<id>/` — другие пользователи не имеют доступа
 - Конкурентные записи в файлы **должны** использовать advisory lock или per-user очередь (см. C-3 в review)
-- Ограничение памяти: `MemoryMax=512M`, `MemoryHigh=400M` (мягкий лимит с throttling)
+- Ограничение памяти: `MemoryMax=768M`, `MemoryHigh=640M` (мягкий лимит с throttling)
 - Лимит тасков: `TasksMax=256` (Node.js использует несколько потоков)
