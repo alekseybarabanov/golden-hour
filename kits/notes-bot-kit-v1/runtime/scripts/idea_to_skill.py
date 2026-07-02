@@ -191,7 +191,7 @@ description: "{description}"
 
 {marker}# {slug}
 
-> 🚧 **DRAFT** — авто-сгенерировано из идеи в боте `golden_hour_team` (`@Goldenteam239bot`).
+> 🚧 **DRAFT** — авто-сгенерировано из идеи в боте `golden_hour_team` (`@your_notes_bot`).
 > Источник: ts={ts}, user_id={uid}, {date}, {handle}, id={idea_id}.
 > Требует ревью Карима и дописывания деталей в Cursor.
 

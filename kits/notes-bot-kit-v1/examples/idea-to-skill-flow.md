@@ -4,9 +4,9 @@
 
 ## Исходное сообщение
 
-**Кто:** Karim (beatusx, chat_id `1038917447`)
+**Кто:** Karim
 **Когда:** 2026-06-21 16:39
-**Где:** Telegram, бот `@Goldenteam239bot`
+**Где:** Telegram, бот `@your_notes_bot`
 **Текст:** `бот должен присылать мне мотивационные цитаты по утрам`
 
 ## Шаг 1 — Бот принял сообщение
@@ -38,9 +38,9 @@
 ```json
 {
   "queued_at": "2026-06-21T16:39:25+03:00",
-  "source": "ts=2026-06-21T16:39:25 user_id=1038917447",
-  "chat_id": 1038917447,
-  "username": "beatusx",
+  "source": "ts=2026-06-21T16:39:25 user_id=100000001",
+  "chat_id": 100000001,
+  "username": "owner_example",
   "content": "бот должен присылать мне мотивационные цитаты по утрам",
   "ts": "2026-06-21T16:39:25+03:00",
   "status": "pending",
@@ -61,7 +61,7 @@
 ```
 sessions_send(
     agentId="forge-skill",
-    message="idea: бот должен присылать мне мотивационные цитаты по утрам | source_idea_id: ts=2026-06-21T16:39:25 user_id=1038917447"
+    message="idea: бот должен присылать мне мотивационные цитаты по утрам | source_idea_id: ts=2026-06-21T16:39:25 user_id=100000001"
 )
 ```
 
@@ -113,8 +113,8 @@ item["processed_at"] = "2026-06-21T16:42:18+03:00"
 
 ```markdown
 ## 2026-06-21 16:42:18 — morning-quote
-- source: ts=2026-06-21T16:39:25 user_id=1038917447
-- author: beatusx
+- source: ts=2026-06-21T16:39:25 user_id=100000001
+- author: owner_example
 - result: ✅ done
 - path: workspace/Golden-Hour/skills/morning-quote/SKILL.md
 - tests: 20/20 passed

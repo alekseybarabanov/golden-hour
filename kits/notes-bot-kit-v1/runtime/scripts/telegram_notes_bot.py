@@ -3,7 +3,7 @@ Telegram notes bot (aiogram 3.x) — Owner + Team edition.
 
 - Public bot; everyone can write notes (no rate limit by request). Guests get a
   minimal "Принято ✅" reply and no command access; their notes still get into the inbox.
-- Owner (@beatusx) is recognized by username; first /start fills chat_id.
+- Owner (@owner_example) is recognized by username; first /start fills chat_id.
 - Team members (config in memory/bot-config.json → team) get read access to /info, /ideas, /classify.
 - Notes go to memory/inbox/YYYY-MM-DD.md and memory/notes.jsonl.
 - /classify (or scripts/idea_intake.py) produces memory/ideas.md (separate file with

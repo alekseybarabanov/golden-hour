@@ -1,7 +1,7 @@
 """Watchdog for telegram_notes_bot.
 
 Spawns the bot in a loop. If it dies, waits RESTART_DELAY seconds and starts
-again. Never gives up — that's the whole point. Used for #7: "when beatusx
+again. Never gives up — that's the whole point. Used for #7: "when owner_example
 comes up, all sent messages should be processed" — getUpdates with
 drop_pending_updates=False picks up the queue on every restart.
 
@@ -20,6 +20,8 @@ import signal
 import subprocess
 import sys
 import time
+import urllib.parse
+import urllib.request
 from datetime import datetime
 from pathlib import Path
 
@@ -30,6 +32,10 @@ LOG = HERE / "telegram_notes_bot.watchdog.log"
 RESTART_DELAY = int(os.environ.get("NOTES_BOT_RESTART_DELAY", "5"))
 MAX_BACKOFF = 60  # seconds; cap exponential growth
 LOG_MAX_BYTES = int(os.environ.get("NOTES_BOT_LOG_MAX_BYTES", str(512 * 1024)))
+# Crash-loop alerting. Token + owner chat id come from the environment (secrets),
+# never from a committed config; if unset, alerting is silently skipped.
+ALERT_THRESHOLD = int(os.environ.get("NOTES_BOT_ALERT_THRESHOLD", "5"))
+ALERT_COOLDOWN = int(os.environ.get("NOTES_BOT_ALERT_COOLDOWN_SEC", "3600"))
 
 
 def now() -> str:
@@ -153,9 +159,37 @@ def kill_stale_bots() -> int:
     return killed
 
 
+def _send_owner_alert(text: str) -> None:
+    """Alert the owner about a crash loop via the Telegram Bot API.
+
+    Secrets are read from the environment ONLY — never hardcode them in the repo:
+      - TEAM_BOT_TOKEN (or TELEGRAM_BOT_TOKEN) — bot token
+      - NOTES_BOT_OWNER_CHAT_ID              — owner chat id
+    If either is unset, the alert is skipped (logged, not fatal). Any network or
+    Telegram error is swallowed so the restart loop never breaks.
+    """
+    token = os.environ.get("TEAM_BOT_TOKEN") or os.environ.get("TELEGRAM_BOT_TOKEN")
+    chat_id = os.environ.get("NOTES_BOT_OWNER_CHAT_ID")
+    if not token or not chat_id:
+        log("alert skipped: TEAM_BOT_TOKEN / NOTES_BOT_OWNER_CHAT_ID not set (secrets)")
+        return
+    try:
+        payload = urllib.parse.urlencode({"chat_id": chat_id, "text": text}).encode()
+        req = urllib.request.Request(
+            f"https://api.telegram.org/bot{token}/sendMessage", data=payload,
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            resp.read()
+        log("owner alert sent")
+    except Exception as exc:  # pragma: no cover - network/telegram errors
+        log(f"alert send failed: {exc}")
+
+
 def main() -> int:
     log(f"watchdog start; bot={BOT}; restart_delay={RESTART_DELAY}s")
     backoff = RESTART_DELAY
+    consecutive_fail = 0
+    last_alert = 0.0
     while True:
         kill_stale_bots()
         log("spawning bot...")
@@ -164,7 +198,21 @@ def main() -> int:
         except KeyboardInterrupt:
             log("watchdog: KeyboardInterrupt, exiting")
             return 0
-        log(f"bot exited with code {rc}; restarting in {backoff}s")
+        if rc != 0:
+            consecutive_fail += 1
+            log(f"bot exited with code {rc} (consecutive failures: {consecutive_fail}); "
+                f"restarting in {backoff}s")
+            if consecutive_fail >= ALERT_THRESHOLD and (time.time() - last_alert) > ALERT_COOLDOWN:
+                _send_owner_alert(
+                    f"⚠️ notes-bot watchdog: бот упал "
+                    f"{consecutive_fail} раз(а) подряд "
+                    f"(последний код {rc}). "
+                    f"Проверь telegram_notes_bot.watchdog.log."
+                )
+                last_alert = time.time()
+        else:
+            consecutive_fail = 0
+            log(f"bot exited with code 0; restarting in {backoff}s")
         time.sleep(backoff)
         backoff = min(backoff * 2, MAX_BACKOFF) if rc != 0 else RESTART_DELAY
 

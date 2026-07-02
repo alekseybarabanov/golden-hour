@@ -1,6 +1,6 @@
 # ARCHITECTURE — Notes-Bot Kit
 
-> Полная развертка. Документ описывает production-систему (Karim's @Goldenteam239bot), 1:1 совпадающую с runtime/ в этом пакете. Обновляется при изменениях в коде или конфиге.
+> Полная развертка. Документ описывает production-систему (Karim's @your_notes_bot), 1:1 совпадающую с runtime/ в этом пакете. Обновляется при изменениях в коде или конфиге.
 
 ## Содержание
 
@@ -164,9 +164,9 @@ async def _maybe_auto_skill_from_text(message: Message) -> None:
 ```json
 {
   "queued_at": "2026-06-23T14:30:00+03:00",
-  "source": "ts=2026-06-23T14:30:00 user_id=1038917447",
-  "chat_id": 1038917447,
-  "username": "beatusx",
+  "source": "ts=2026-06-23T14:30:00 user_id=100000001",
+  "chat_id": 100000001,
+  "username": "owner_example",
   "content": "Бот должен присылать мотивационные цитаты по утрам",
   "ts": "2026-06-23T14:30:00+03:00",
   "status": "pending",
@@ -182,7 +182,7 @@ async def _maybe_auto_skill_from_text(message: Message) -> None:
 ```
 sessions_send(
   agentId="forge-skill",
-  message="idea: Бот должен присылать мотивационные цитаты по утрам | source_idea_id: ts=2026-06-23T14:30:00 user_id=1038917447"
+  message="idea: Бот должен присылать мотивационные цитаты по утрам | source_idea_id: ts=2026-06-23T14:30:00 user_id=100000001"
 )
 ```
 
@@ -351,9 +351,9 @@ def is_team_member(user): # owner OR username in team
   "ts": "2026-06-23T14:30:00+03:00",   // ISO с timezone
   "date": "2026-06-23",                // YYYY-MM-DD
   "time": "14:30",                      // HH:MM
-  "user_id": 1038917447,
-  "username": "beatusx",
-  "first_name": "Beatus",
+  "user_id": 100000001,
+  "username": "owner_example",
+  "first_name": "Owner",
   "last_name": null,
   "kind": "text",                       // text|voice|photo|document|sticker|video|other
   "duration": null,                     // только для voice (в секундах)

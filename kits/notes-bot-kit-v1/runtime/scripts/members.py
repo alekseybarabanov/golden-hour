@@ -136,9 +136,9 @@ def resolve_handle(record: dict[str, Any]) -> str:
     @username, если есть. Иначе first_name, иначе id:user_id.
 
     Возвращает строку вида:
-      "@svirepymedved" — если в members есть username;
-      "Михаил"         — если username нет, но есть first_name;
-      "id:1038917447"  — крайний fallback;
+      "@teammate1" — если в members есть username;
+      "Teammate One"         — если username нет, но есть first_name;
+      "id:100000001"  — крайний fallback;
       "anon"           — если вообще ничего.
 
     Приоритет:
@@ -340,10 +340,10 @@ if __name__ == "__main__":
     print()
     print("🔍 Тест resolve_handle:")
     tests = [
-        {"user_id": 1038917447, "username": "old_name", "first_name": "Beatus"},
-        {"user_id": 5649925712, "username": "svirepymedved", "first_name": "Михаил"},
-        {"user_id": 501775529, "username": "aabarabanov", "first_name": "Aleksey", "last_name": "Barabanov"},
-        {"user_id": 1317020734, "username": "Sayu33", "first_name": "Sayu"},
+        {"user_id": 100000001, "username": "old_name", "first_name": "Owner"},
+        {"user_id": 100000002, "username": "teammate1", "first_name": "Teammate One"},
+        {"user_id": 100000003, "username": "teammate2", "first_name": "Teammate", "last_name": "Two"},
+        {"user_id": 100000004, "username": "teammate3", "first_name": "Teammate Three"},
         {"user_id": 999999999, "username": "unknown_user", "first_name": "NoName"},
         {"user_id": 2, "username": "maria", "first_name": "Мария"},
     ]

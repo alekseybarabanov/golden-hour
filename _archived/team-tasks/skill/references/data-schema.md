@@ -8,8 +8,8 @@ All timestamps: **UTC ISO-8601** with `+00:00` suffix.
 {
   "team_id": "team-a1b2c3d4",
   "goal": "Собрать Q&A сайт к 1 сентября",
-  "owner_user_key": "tg-5649925712",
-  "owner_telegram_id": 5649925712,
+  "owner_user_key": "tg-100000002",
+  "owner_telegram_id": 100000002,
   "created_at": "2026-06-17T15:00:00+00:00"
 }
 ```
@@ -20,8 +20,8 @@ All timestamps: **UTC ISO-8601** with `+00:00` suffix.
 {
   "members": [
     {
-      "user_key": "tg-5649925712",
-      "telegram_id": 5649925712,
+      "user_key": "tg-100000002",
+      "telegram_id": 100000002,
       "username": "@alice",
       "role": "owner",
       "joined_at": "2026-06-17T15:00:00+00:00"
@@ -48,7 +48,7 @@ All timestamps: **UTC ISO-8601** with `+00:00` suffix.
   "invites": [
     {
       "invite_code": "a1b2c3d4",
-      "created_by": "tg-5649925712",
+      "created_by": "tg-100000002",
       "target_telegram_id": 999888777,
       "target_username": "@bob",
       "created_at": "2026-06-17T15:00:00+00:00",
@@ -75,7 +75,7 @@ TTL: **5 days** from `created_at` (UTC).
       "status": "in_progress",
       "assignee_user_key": "tg-999888777",
       "assignee_telegram_id": 999888777,
-      "created_by": "tg-5649925712",
+      "created_by": "tg-100000002",
       "created_at": "2026-06-17T16:00:00+00:00",
       "deadline": "2026-06-27T15:00:00+00:00",
       "submit_at": null,

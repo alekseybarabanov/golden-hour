@@ -1,18 +1,16 @@
 {
+  "_note": "ПРИМЕР конфига (обезличено). Реальные chat_id/user_id/@username сюда НЕ коммитить — это личные данные. Живой bot-config.json создаётся локально из bot-config.template.json и в репозиторий не попадает.",
   "owner": {
-    "username": "beatusx",
-    "chat_id": 1038917447,
-    "user_id": 1038917447,
-    "first_name": "Beatus"
+    "username": "owner_example",
+    "chat_id": 100000001,
+    "user_id": 100000001,
+    "first_name": "Owner"
   },
   "team": [
-    "svirepymedved",
-    "Sayu33",
-    "aabarabanov",
-    "vlasov_andrey_spb",
-    "IgnaKate",
-    "jekajops",
-    "das_quatschfass239"
+    "teammate1",
+    "teammate2",
+    "teammate3",
+    "teammate4"
   ],
   "commands": {
     "owner_only": [
@@ -42,7 +40,7 @@
   "asr": {
     "server_side": false,
     "client_tool": "wispr_flow",
-    "note": "Server-side ASR отключён. Команда диктует в Telegram-поле через Wispr Flow (1.5.789) на своём устройстве. Голосовые .ogg, пришедшие в бот, сохраняются с duration, без транскрипта."
+    "note": "Server-side ASR отключён. Команда диктует в Telegram-поле через клиентский STT на своём устройстве. Голосовые .ogg сохраняются с duration, без транскрипта."
   },
   "digest": {
     "periodic": false,

@@ -72,7 +72,7 @@ source_idea_id: ts=<unix> user_id=<chat_id>
   "idea": "...",
   "source_idea_id": "ts=<unix> user_id=<chat_id>",
   "context": {
-    "user_key": "beatusx",
+    "user_key": "owner_example",
     "related_skills": ["..."],
     "urgency": "low|normal|high"
   }

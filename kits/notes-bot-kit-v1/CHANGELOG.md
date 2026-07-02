@@ -1,18 +1,23 @@
 # CHANGELOG — Notes-Bot Kit
 
-## v1.0.1 (2026-07-02) — устойчивость watchdog
+## v1.0.1 (2026-07-02) — устойчивость watchdog + гигиена секретов
 
 **`runtime/scripts/telegram_notes_bot_watchdog.py`:**
 - **Fix Bug #2 (два инстанса бота).** Перед каждым spawn watchdog вызывает `kill_stale_bots()` — убивает процессы с `telegram_notes_bot.py` в cmdline (исключая сам watchdog и свой PID). Best-effort, кросс-платформенно: `psutil` при наличии, иначе `pgrep`/`os.kill` (POSIX) или `wmic`/`taskkill` (Windows). Любая ошибка логируется и не ломает цикл рестарта.
 - **Ротация лога по размеру.** `telegram_notes_bot.watchdog.log` → `.log.1` при превышении `NOTES_BOT_LOG_MAX_BYTES` (по умолчанию 512 KB). Раньше лог рос бесконечно.
+- **Telegram-alert при краш-петле (P2).** После `NOTES_BOT_ALERT_THRESHOLD` (5) падений подряд watchdog шлёт владельцу сообщение через Bot API, не чаще одного раза в `NOTES_BOT_ALERT_COOLDOWN_SEC` (1 ч). Токен и `chat_id` берутся **только из env** (`TEAM_BOT_TOKEN` / `TELEGRAM_BOT_TOKEN`, `NOTES_BOT_OWNER_CHAT_ID`); если не заданы — алерт пропускается, не падает.
 
-Остаются нереализованными (см. ARCHITECTURE.md): Telegram-alert при N падениях подряд (P2), приоритеты aiogram-роутеров Bug #3 (P3), UI тегов.
+**Гигиена секретов / PII:**
+- Из репозитория убраны **реальные Telegram chat_id / user_id и @username** живых людей. `bot-config.reference.json`, `members.reference.json`, `notes.jsonl-sample.jsonl`, `inbox-sample.md` и seed в `members.py` обезличены (плейсхолдеры `100000001…`, `owner_example`, `teammate1…`). Числовые ID также заменены в прозаических доках.
+- `.env.example` дополнен `NOTES_BOT_OWNER_CHAT_ID` (секрет для алерта). Правило: личные `chat_id` хранить в `.env`, не в коммитируемом `bot-config.json`.
+
+Остаются нереализованными (см. ARCHITECTURE.md): приоритеты aiogram-роутеров Bug #3 (P3), UI тегов.
 
 ## v1 (2026-06-23) — начальный релиз
 
 ### Что внутри
 
-Полный 1:1 слепок production-системы `@Goldenteam239bot` (Telegram bot id `8991800752`).
+Полный 1:1 слепок production-системы `@your_notes_bot` (Telegram bot id `100000000`).
 
 **Runtime (1:1 production code):**
 - `runtime/scripts/telegram_notes_bot.py` (63 KB) — главный бот на aiogram 3.x
@@ -63,7 +68,7 @@
 - ✅ Кодировка UTF-8 сохранена при копировании
 - ✅ `.env.example` содержит placeholder для токена (без утечки реального)
 - ✅ `bot-config.template.json` и `members.template.json` — обезличенные шаблоны
-- ✅ `bot-config.reference.json` и `members.reference.json` — реальные production-данные Karim'а (для примера; **содержат его Telegram user_id и username**, что не секрет, но в production-bundle может быть нежелательно — Karim решает)
+- ✅ `bot-config.reference.json` и `members.reference.json` — **обезличенные** примеры (плейсхолдеры вместо реальных chat_id/user_id/@username; см. v1.0.1 «Гигиена секретов»)
 
 ### Что НЕ включено (намеренно)
 

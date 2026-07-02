@@ -136,10 +136,10 @@ while True:
 
 - ✅ **Убивает старые bot-процессы перед spawn** (`kill_stale_bots()`): матчит cmdline с `telegram_notes_bot.py`, исключая сам watchdog и свой PID. Best-effort — любая ошибка логируется и игнорируется, цикл рестарта не ломается. Использует `psutil` при наличии, иначе `pgrep`/`os.kill` (POSIX) или `wmic`/`taskkill` (Windows).
 - ✅ **Ротирует лог по размеру**: `telegram_notes_bot.watchdog.log` → `.log.1` при превышении `NOTES_BOT_LOG_MAX_BYTES` (по умолчанию 512 KB).
+- ✅ **Шлёт алерт владельцу при краш-петле**: после `NOTES_BOT_ALERT_THRESHOLD` (5) падений подряд — сообщение через Telegram Bot API, не чаще одного раза в `NOTES_BOT_ALERT_COOLDOWN_SEC` (1 ч). Токен и `chat_id` — **только из env** (`TEAM_BOT_TOKEN`/`TELEGRAM_BOT_TOKEN`, `NOTES_BOT_OWNER_CHAT_ID`); если не заданы — алерт пропускается, watchdog не падает.
 
 ### Что НЕ делает
 
-- ❌ Не шлёт алерт в Telegram при N падениях подряд (P2 задача)
 - ❌ Не мониторит интернет (если Telegram API недоступен — aiogram бросит exception, watchdog перезапустит)
 - ❌ Не делает health-check endpoint (нет HTTP-сервера)
 
