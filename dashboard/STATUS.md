@@ -1,8 +1,10 @@
 # Dashboard — статус проекта
 
 **Файл:** `dashboard/STATUS.md`  
-**Обновлено:** 2026-06-27
+**Обновлено:** 2026-07-02
 **Решение:** **Вариант C (гибрид)** · шапка **Фельпик** ⚙️
+
+> Помимо admin-дашборда «Фельпик» в папке `dashboard/` живут **Student Portal** (кабинет ученика, `student_portal_backend.py`, :18791) и **Telegram Mini App** (`telegram-miniapp.js/.css`, `setup_telegram_miniapp.ps1`). Полное описание — [`../docs/06-dashboard.md`](../docs/06-dashboard.md).
 
 ---
 
@@ -100,20 +102,38 @@ cd dashboard
 
 ---
 
+## Реализовано после Phase 1
+
+- **Drag-and-drop kanban + создание задач** — есть в `dashboard.html` (обработчики `dragstart`/`dragover`/`drop`/`dragend`, модалка создания).
+- **Student Portal** (`student_portal_backend.py`, :18791) + режим ученика в общем `dashboard.html`.
+- **Telegram Mini App** (`telegram-miniapp.js/.css`, `setup_telegram_miniapp.ps1`, cloudflared-туннель, menu-button).
+- **Grafana/Prometheus** стек в `grafana/` (docker-compose, provisioning, watchdog).
+
 ## Дальше (Phase 2+)
 
-- Drag-and-drop kanban + создание задач
 - WS вместо CLI polling
 - Operations (restart gateway, backup)
-- Grafana — только если понадобятся p95 latency / queue depth
+- Grafana — расширение панелей (p95 latency / queue depth) при необходимости
 
 ---
 
-## Файлы
+## Файлы (основное)
 
 ```
-workspace/dashboard/
-├── backend.py
-├── dashboard.html
+dashboard/
+├── backend.py                    # admin-дашборд «Фельпик» (:18790)
+├── student_portal_backend.py     # кабинет ученика Golden Hour (:18791)
+├── dashboard.html                # общий SPA (admin / student / Mini App)
+├── telegram-miniapp.js / .css    # интеграция Telegram WebApp
+├── gateway-chat.js               # WebSocket-чат к gateway (:18789)
+├── student-chat-rpc.mjs          # одноразовый RPC к gateway для чата портала
+├── diag.py / diag2.py            # диагностика
+├── grafana/                      # мониторинг: docker-compose, prometheus, provisioning, watchdog
+├── *.ps1                         # запуск/чинка/автозапуск/туннели/firewall (start_*, repair-portals, watchdog, lib.ps1 …)
+├── telegram-miniapp.env.example  # переменные Mini App
+├── TELEGRAM_MINIAPP.md           # настройка Mini App
+├── README.md
 └── STATUS.md
 ```
+
+> Полная карта эндпоинтов, портов и потоков данных — в [`../docs/06-dashboard.md`](../docs/06-dashboard.md).

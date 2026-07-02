@@ -132,21 +132,23 @@ while True:
    Start-ScheduledTask -TaskName "NotesBotKitWatchdog"
    ```
 
-### Что НЕ делает (в v1)
+### Что делает (v1.0.1+)
 
-- ❌ Не убивает старые bot-процессы перед spawn нового → может быть «два бота» (Bug #2)
+- ✅ **Убивает старые bot-процессы перед spawn** (`kill_stale_bots()`): матчит cmdline с `telegram_notes_bot.py`, исключая сам watchdog и свой PID. Best-effort — любая ошибка логируется и игнорируется, цикл рестарта не ломается. Использует `psutil` при наличии, иначе `pgrep`/`os.kill` (POSIX) или `wmic`/`taskkill` (Windows).
+- ✅ **Ротирует лог по размеру**: `telegram_notes_bot.watchdog.log` → `.log.1` при превышении `NOTES_BOT_LOG_MAX_BYTES` (по умолчанию 512 KB).
+
+### Что НЕ делает
+
 - ❌ Не шлёт алерт в Telegram при N падениях подряд (P2 задача)
-- ❌ Не ротирует лог (растёт бесконечно, ~50 KB/день при нормальной нагрузке)
 - ❌ Не мониторит интернет (если Telegram API недоступен — aiogram бросит exception, watchdog перезапустит)
 - ❌ Не делает health-check endpoint (нет HTTP-сервера)
 
 ### Известные баги watchdog
 
-**Bug #2 — два инстанса бота одновременно**
+**Bug #2 — два инстанса бота одновременно** — ✅ **исправлено в v1.0.1**
 
 - Симптом: `terminated by other getUpdates request` в логе
-- Workaround: ручной kill лишних
-- Правильный фикс (P2): watchdog должен сначала `Stop-Process` все `telegram_notes_bot.py` (не watchdog), потом spawn
+- Фикс: `kill_stale_bots()` вызывается в начале каждой итерации цикла, до spawn
 
 ### Альтернативы (не в v1)
 

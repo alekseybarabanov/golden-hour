@@ -1,5 +1,13 @@
 # CHANGELOG — Notes-Bot Kit
 
+## v1.0.1 (2026-07-02) — устойчивость watchdog
+
+**`runtime/scripts/telegram_notes_bot_watchdog.py`:**
+- **Fix Bug #2 (два инстанса бота).** Перед каждым spawn watchdog вызывает `kill_stale_bots()` — убивает процессы с `telegram_notes_bot.py` в cmdline (исключая сам watchdog и свой PID). Best-effort, кросс-платформенно: `psutil` при наличии, иначе `pgrep`/`os.kill` (POSIX) или `wmic`/`taskkill` (Windows). Любая ошибка логируется и не ломает цикл рестарта.
+- **Ротация лога по размеру.** `telegram_notes_bot.watchdog.log` → `.log.1` при превышении `NOTES_BOT_LOG_MAX_BYTES` (по умолчанию 512 KB). Раньше лог рос бесконечно.
+
+Остаются нереализованными (см. ARCHITECTURE.md): Telegram-alert при N падениях подряд (P2), приоритеты aiogram-роутеров Bug #3 (P3), UI тегов.
+
 ## v1 (2026-06-23) — начальный релиз
 
 ### Что внутри

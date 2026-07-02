@@ -452,13 +452,11 @@ async def _handle_text_note(message):
 
 ---
 
-### Bug #2 (minor) — два инстанса бота одновременно
+### Bug #2 — два инстанса бота одновременно — ✅ исправлено в v1.0.1
 
-**Симптом:** иногда watchdog не убивает предыдущий bot-процесс перед spawn нового → два polling'а → конфликт `getUpdates`.
+**Симптом:** иногда watchdog не убивал предыдущий bot-процесс перед spawn нового → два polling'а → конфликт `getUpdates`.
 
-**Workaround:** `Get-Process python | Where ... | Stop-Process` вручную (см. OPERATIONS.md).
-
-**Правильное решение (P2):** watchdog должен сначала убить ВСЕ старые bot-процессы, потом spawn. Не реализовано в v1.
+**Решение (v1.0.1):** watchdog вызывает `kill_stale_bots()` в начале каждой итерации цикла — убивает все процессы с `telegram_notes_bot.py` в cmdline (исключая сам watchdog и свой PID), затем spawn. Best-effort: `psutil` при наличии, иначе `pgrep`/`os.kill` (POSIX) или `wmic`/`taskkill` (Windows); любая ошибка логируется и не ломает цикл.
 
 ---
 
