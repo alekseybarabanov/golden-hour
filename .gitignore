@@ -112,3 +112,6 @@ presentation/node_modules/
 *.db
 *.db-wal
 *.db-shm
+
+# Pi systemd timers secret
+deploy/pi/golden-hour.env

@@ -108,6 +108,14 @@ Env: `HOME=/opt/golden-hour`, `NODE_ENV=production`, `TZ=Europe/Moscow`, `OPENCL
 .\scripts\cron\register-task-scheduler.ps1  # через Windows Task Scheduler (без gateway)
 .\scripts\cron\cleanup-golden-hour-cron.ps1 # снять задачи
 ```
+
+### Регистрация (Linux / Raspberry Pi)
+systemd user-таймеры вместо `.ps1` (те же 6 задач, локальное время):
+```bash
+bash deploy/pi/install-timers.sh
+loginctl enable-linger "$USER"
+```
+Плюс настройка таймзоны (`GH_TZ`) и портала по LAN Pi. Полный гайд: [`deploy/pi/README.md`](../deploy/pi/README.md).
 Пример payload и документация — `scripts/cron/morning-plan.job.json`, `scripts/cron/morning-plan.md`.
 
 ### Идемпотентность

@@ -159,21 +159,29 @@ export function publicStudentPortalBaseUrl() {
 export function portalUrl(userKey, { host, port = DEFAULT_PORT } = {}) {
   const { token } = ensurePortalToken(userKey);
   const publicBase = publicStudentPortalBaseUrl();
-  const ip = host || detectLanIp();
-  const primaryHost = host || (listLanIps().includes(HOTSPOT_HOST) ? HOTSPOT_HOST : ip);
+  const lanIps = listLanIps();
+  // Windows hotspot (192.168.137.1) only when that interface actually exists;
+  // on a Pi/Linux LAN host it won't, so fall back to the detected LAN IP.
+  const hotspotPresent = lanIps.includes(HOTSPOT_HOST);
+  const ip = host || lanIps[0] || "127.0.0.1";
+  const primaryHost = host || (hotspotPresent ? HOTSPOT_HOST : ip);
   const pathPart = `/my/${token}?v=${PORTAL_UI_VERSION}`;
   const hotspotUrl = `http://${HOTSPOT_HOST}:${port}${pathPart}`;
   const lanUrl = `http://${primaryHost}:${port}${pathPart}`;
+  const localUrl = hotspotPresent ? hotspotUrl : lanUrl;
+  const mode = publicBase ? "public" : hotspotPresent ? "hotspot" : "lan";
   return {
     token,
     host: primaryHost,
     port,
-    url: publicBase ? `${publicBase}${pathPart}` : hotspotUrl,
+    mode,
+    url: publicBase ? `${publicBase}${pathPart}` : localUrl,
     public_url: publicBase ? `${publicBase}${pathPart}` : "",
     public_base_url: publicBase,
     lan_url: lanUrl,
     hotspot_url: hotspotUrl,
     hotspot_host: HOTSPOT_HOST,
+    hotspot_present: hotspotPresent,
     path: pathPart,
     ui_version: PORTAL_UI_VERSION,
   };

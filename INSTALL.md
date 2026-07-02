@@ -253,6 +253,12 @@ node scripts/exam-topics.mjs show ege-math-profile
 .\scripts\cron\register-task-scheduler.ps1
 ```
 
+**Linux / Raspberry Pi** — вместо `.ps1` используйте systemd user-таймеры:
+```bash
+bash deploy/pi/install-timers.sh
+```
+Подробно (таймзона, портал по LAN, ресурсы Pi): [`deploy/pi/README.md`](deploy/pi/README.md).
+
 Доставка в Telegram: `cron-deliver.mjs` → Bot API (нужен `TELEGRAM_BOT_TOKEN`).
 
 Подробности: [`scripts/cron/morning-plan.md`](scripts/cron/morning-plan.md), [`HEARTBEAT.md`](HEARTBEAT.md).

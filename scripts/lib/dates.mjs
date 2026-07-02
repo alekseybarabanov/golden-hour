@@ -1,6 +1,27 @@
-// Date utilities (Europe/Moscow +03:00 by default).
+// Date utilities. Timezone is configurable:
+//   GH_TZ        — IANA name (default "Europe/Moscow"), used for calendar-day math.
+//   GH_TZ_OFFSET — fixed UTC offset like "+03:00"; if unset, derived from GH_TZ.
+// For correct slot times set the host system TZ to match GH_TZ (see deploy/pi/).
 
-const TZ_OFFSET = "+03:00";
+const TZ = process.env.GH_TZ?.trim() || "Europe/Moscow";
+
+function deriveOffset(tz) {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      timeZoneName: "longOffset",
+    }).formatToParts(new Date());
+    const name = parts.find((p) => p.type === "timeZoneName")?.value || "";
+    if (name === "GMT" || name === "UTC") return "+00:00";
+    const m = name.match(/GMT([+-])(\d{2}):?(\d{2})?/);
+    if (m) return `${m[1]}${m[2]}:${m[3] || "00"}`;
+  } catch {
+    /* fall through to default */
+  }
+  return "+03:00";
+}
+
+const TZ_OFFSET = process.env.GH_TZ_OFFSET?.trim() || deriveOffset(TZ);
 
 export function parseDateOnly(s) {
   if (!s) return null;
@@ -12,10 +33,10 @@ export function parseDateOnly(s) {
   return new Date(Date.UTC(y, mo, d));
 }
 
-/** Calendar date in Europe/Moscow (+03:00). */
+/** Calendar date in the configured timezone (GH_TZ, default Europe/Moscow). */
 export function todayISO(ref = new Date()) {
   return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Moscow",
+    timeZone: TZ,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
